@@ -62,16 +62,17 @@ void Main()
 // ============================================================================
 
 #ifdef _WIN32
+#define UNICODE 1
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
-                    _In_ PWSTR pCmdLine, _In_ int nCmdShow)
+                    _In_ LPWSTR lpCmdLine, _In_ int nShowCmd)
 {
 	(void)hInstance;
 	(void)hPrevInstance;
-	(void)pCmdLine;
-	(void)nCmdShow;
+	(void)lpCmdLine;
+	(void)nShowCmd;
 	Main();
 }
 
