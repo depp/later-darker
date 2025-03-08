@@ -31,6 +31,18 @@ extern "C" void ErrorCallback(int error, const char *description)
 	MessageBoxW(nullptr, wmessage.c_str(), nullptr, MB_ICONSTOP);
 }
 
+constexpr float InverseAspect = 480.0f / 640.0f;
+constexpr float TriangleSize = 0.8f;
+
+const float VertexData[6] = {
+	0.0f,
+	TriangleSize,
+	-std::sqrt(3.0f) * 0.5f * TriangleSize *InverseAspect,
+	-0.5f,
+	std::sqrt(3.0f) * 0.5f * TriangleSize *InverseAspect,
+	-0.5f,
+};
+
 void Main()
 {
 	glfwSetErrorCallback(ErrorCallback);
@@ -70,6 +82,16 @@ void Main()
 	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
 	demo::gl_shader::Init();
 
+	GLuint buffer, array;
+	glGenVertexArrays(1, &array);
+	glBindVertexArray(array);
+	glGenBuffers(1, &buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexData), VertexData,
+	             GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 8, 0);
+
 	glfwSwapInterval(1);
 
 	while (!glfwWindowShouldClose(window)) {
@@ -85,6 +107,9 @@ void Main()
 		glClearColor(0.5f + 0.5f * std::sin(a + d), 0.5f + 0.5f * std::sin(a),
 		             0.5f + 0.5f * std::sin(a - d), 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		glUseProgram(demo::gl_shader::Program);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
