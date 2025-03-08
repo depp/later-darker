@@ -16,6 +16,7 @@
 #include <Windows.h>
 #include <shellapi.h>
 
+namespace demo {
 namespace {
 
 extern "C" void ErrorCallback(int error, const char *description) {
@@ -23,7 +24,7 @@ extern "C" void ErrorCallback(int error, const char *description) {
 	std::string message;
 	message.append("GLFW error: ");
 	message.append(description);
-	std::wstring wmessage = demo::ToOSString(message);
+	std::wstring wmessage = ToOSString(message);
 	MessageBoxW(nullptr, wmessage.c_str(), nullptr, MB_ICONSTOP);
 }
 
@@ -50,7 +51,7 @@ void Main() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 
-	if (demo::var::DebugContext) {
+	if (var::DebugContext) {
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 	}
 
@@ -63,8 +64,8 @@ void Main() {
 
 	glfwMakeContextCurrent(window);
 	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
-	demo::gl_shader::Init();
-	demo::TriangleScene scene;
+	gl_shader::Init();
+	TriangleScene scene;
 	scene.Init();
 
 	glfwSwapInterval(1);
@@ -100,17 +101,19 @@ void ParseCommandLine(const wchar_t *cmdLine) {
 	if (args == nullptr) {
 		std::abort();
 	}
-	demo::ParseCommandArguments(nArgs - 1, args + 1);
+	ParseCommandArguments(nArgs - 1, args + 1);
 	LocalFree(args);
 }
 
 } // namespace
+
+} // namespace demo
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
                     _In_ LPWSTR lpCmdLine, _In_ int nShowCmd) {
 	(void)hInstance;
 	(void)hPrevInstance;
 	(void)nShowCmd;
-	ParseCommandLine(lpCmdLine);
-	Main();
+	demo::ParseCommandLine(lpCmdLine);
+	demo::Main();
 }
