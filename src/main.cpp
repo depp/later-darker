@@ -65,7 +65,7 @@ void Main() {
 	glfwMakeContextCurrent(window);
 	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
 	gl_shader::Init();
-	TriangleScene scene;
+	scene::Triangle scene;
 	scene.Init();
 
 	glfwSwapInterval(1);

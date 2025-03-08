@@ -5,12 +5,13 @@
 #include "gl.hpp"
 
 namespace demo {
+namespace scene {
 
-class TriangleScene {
+class Triangle {
 public:
-	TriangleScene() : mArray{0}, mBuffer{0} {}
-	TriangleScene(const TriangleScene &) = delete;
-	TriangleScene &operator=(const TriangleScene &) = delete;
+	Triangle() : mArray{0}, mBuffer{0} {}
+	Triangle(const Triangle &) = delete;
+	Triangle &operator=(const Triangle &) = delete;
 
 	void Init();
 	void Render(double time);
@@ -20,4 +21,5 @@ private:
 	GLuint mBuffer;
 };
 
+} // namespace scene
 } // namespace demo
