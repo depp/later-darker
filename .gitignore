@@ -1,6 +1,2 @@
-/.vs
-/*.user
-/Debug
-/Release
-/x64
-/later-darker
+/.vs/
+/out/
