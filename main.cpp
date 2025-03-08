@@ -63,7 +63,7 @@ void Main()
 
 #ifdef _WIN32
 #define UNICODE 1
-#define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
