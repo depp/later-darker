@@ -4,14 +4,12 @@
 #include "gl.hpp"
 #include "gl_shader.hpp"
 #include "os_string.hpp"
+#include "scene_triangle.hpp"
 #include "var.hpp"
 
 #include <GLFW/glfw3.h>
 
-#include <cmath>
-#include <cstdio>
 #include <cstdlib>
-#include <numbers>
 
 #define UNICODE 1
 #define WIN32_LEAN_AND_MEAN 1
@@ -30,18 +28,6 @@ extern "C" void ErrorCallback(int error, const char *description)
 	std::wstring wmessage = demo::ToOSString(message);
 	MessageBoxW(nullptr, wmessage.c_str(), nullptr, MB_ICONSTOP);
 }
-
-constexpr float InverseAspect = 480.0f / 640.0f;
-constexpr float TriangleSize = 0.8f;
-
-const float VertexData[6] = {
-	0.0f,
-	TriangleSize,
-	-std::sqrt(3.0f) * 0.5f * TriangleSize *InverseAspect,
-	-0.5f,
-	std::sqrt(3.0f) * 0.5f * TriangleSize *InverseAspect,
-	-0.5f,
-};
 
 void Main()
 {
@@ -81,16 +67,8 @@ void Main()
 	glfwMakeContextCurrent(window);
 	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
 	demo::gl_shader::Init();
-
-	GLuint buffer, array;
-	glGenVertexArrays(1, &array);
-	glBindVertexArray(array);
-	glGenBuffers(1, &buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, buffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexData), VertexData,
-	             GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 8, 0);
+	demo::TriangleScene scene;
+	scene.Init();
 
 	glfwSwapInterval(1);
 
@@ -100,16 +78,7 @@ void Main()
 		glViewport(0, 0, width, height);
 
 		double time = glfwGetTime();
-		constexpr float d = std::numbers::pi_v<float> * 2.0f / 3.0f;
-		constexpr double rate = 0.3;
-		float a = static_cast<float>(std::fmod(time * rate, 1.0)) *
-		          (2.0f * std::numbers::pi_v<float>);
-		glClearColor(0.5f + 0.5f * std::sin(a + d), 0.5f + 0.5f * std::sin(a),
-		             0.5f + 0.5f * std::sin(a - d), 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		glUseProgram(demo::gl_shader::Program);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		scene.Render(time);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
