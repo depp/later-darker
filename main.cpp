@@ -8,6 +8,7 @@ namespace
 
 extern "C" void ErrorCallback(int error, const char *description)
 {
+	(void)error;
 	std::fprintf(stderr, "Error: %s\n", description);
 }
 
