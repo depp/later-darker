@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(later-darker WIN32
 	"src/main.cpp"
+	"src/os_string.cpp"
+	"src/var.cpp"
 )
 
 if(MSVC)
