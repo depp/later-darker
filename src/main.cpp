@@ -4,7 +4,7 @@
 #include "os_string.hpp"
 #include "var.hpp"
 
-#include <glad/glad.h>
+#include <glad/gl.h>
 
 #include <GLFW/glfw3.h>
 
@@ -67,7 +67,7 @@ void Main()
 	}
 
 	glfwMakeContextCurrent(window);
-	gladLoadGL(); // TODO: Log version.
+	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
 
 	glfwSwapInterval(1);
 
