@@ -15,13 +15,8 @@ extern "C" void ErrorCallback(int error, const char *description)
 	std::fprintf(stderr, "Error: %s\n", description);
 }
 
-} // namespace
-
-int main(int argc, char **argv)
+void Main()
 {
-	(void)argc;
-	(void)argv;
-
 	glfwSetErrorCallback(ErrorCallback);
 	if (!glfwInit()) {
 		std::exit(1);
@@ -59,3 +54,25 @@ int main(int argc, char **argv)
 
 	glfwTerminate();
 }
+
+} // namespace
+
+// ============================================================================
+// Windows
+// ============================================================================
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
+                    _In_ PWSTR pCmdLine, _In_ int nCmdShow)
+{
+	(void)hInstance;
+	(void)hPrevInstance;
+	(void)pCmdLine;
+	(void)nCmdShow;
+	Main();
+}
+
+#endif

@@ -7,7 +7,7 @@ find_package(glfw3 CONFIG REQUIRED)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_executable(later-darker main.cpp)
+add_executable(later-darker WIN32 main.cpp)
 
 if(MSVC)
 	target_compile_options(later-darker PRIVATE /W4)
