@@ -1,10 +1,10 @@
 // Copyright 2025 Dietrich Epp <depp@zdome.net>
 // Licensed under the Mozilla Public License Version 2.0.
 // SPDX-License-Identifier: MPL-2.0
+#include "gl.hpp"
+#include "gl_shader.hpp"
 #include "os_string.hpp"
 #include "var.hpp"
-
-#include <glad/gl.h>
 
 #include <GLFW/glfw3.h>
 
@@ -68,6 +68,7 @@ void Main()
 
 	glfwMakeContextCurrent(window);
 	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
+	demo::gl_shader::Init();
 
 	glfwSwapInterval(1);
 

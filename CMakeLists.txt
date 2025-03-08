@@ -18,6 +18,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(later-darker WIN32
+	"src/gl_shader.cpp"
 	"src/main.cpp"
 	"src/os_string.cpp"
 	"src/var.cpp"
