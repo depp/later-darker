@@ -32,4 +32,21 @@ std::string ToString(os_string_view value)
 	return result;
 }
 
+os_string ToOSString(std::string_view value)
+{
+	os_string result;
+	if (!value.empty()) {
+		if (value.size() > std::numeric_limits<int>::max()) {
+			std::abort();
+		}
+		int nChars = static_cast<int>(value.size());
+		int nWideChars =
+			MultiByteToWideChar(CP_UTF8, 0, value.data(), nChars, nullptr, 0);
+		result.resize(nWideChars);
+		MultiByteToWideChar(CP_UTF8, 0, value.data(), nChars, result.data(),
+		                    nWideChars);
+	}
+	return result;
+}
+
 } // namespace demo

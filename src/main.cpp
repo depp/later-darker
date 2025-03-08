@@ -1,6 +1,7 @@
 // Copyright 2025 Dietrich Epp <depp@zdome.net>
 // Licensed under the Mozilla Public License Version 2.0.
 // SPDX-License-Identifier: MPL-2.0
+#include "os_string.hpp"
 #include "var.hpp"
 
 #include <GLFW/glfw3.h>
@@ -11,13 +12,22 @@
 #include <cstdlib>
 #include <numbers>
 
+#define UNICODE 1
+#define WIN32_LEAN_AND_MEAN 1
+#include <Windows.h>
+#include <shellapi.h>
+
 namespace
 {
 
 extern "C" void ErrorCallback(int error, const char *description)
 {
 	(void)error;
-	std::fprintf(stderr, "Error: %s\n", description);
+	std::string message;
+	message.append("GLFW error: ");
+	message.append(description);
+	std::wstring wmessage = demo::ToOSString(message);
+	MessageBoxW(nullptr, wmessage.c_str(), nullptr, MB_ICONSTOP);
 }
 
 void Main()
@@ -87,12 +97,6 @@ void Main()
 // Windows
 // ============================================================================
 
-#ifdef _WIN32
-#define UNICODE 1
-#define WIN32_LEAN_AND_MEAN 1
-#include <Windows.h>
-#include <shellapi.h>
-
 namespace
 {
 
@@ -118,5 +122,3 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	ParseCommandLine(lpCmdLine);
 	Main();
 }
-
-#endif

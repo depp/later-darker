@@ -17,4 +17,7 @@ using os_string = std::basic_string<os_char>;
 // Convert an OS-native string to a UTF-8 string.
 std::string ToString(os_string_view value);
 
+// Convert a UTF-8 string to an OS-native string.
+os_string ToOSString(std::string_view value);
+
 } // namespace demo
