@@ -6,8 +6,7 @@
 #include <string>
 #include <string_view>
 
-namespace demo
-{
+namespace demo {
 
 // OS-native character type. For Windows, this is wchar_t. Otherwise it is char.
 using os_char = wchar_t;

@@ -3,31 +3,24 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "var.hpp"
 
-namespace demo
-{
+namespace demo {
 
-namespace var
-{
+namespace var {
 
 bool DebugContext;
 
 }
 
-namespace
-{
+namespace {
 
 // Iterator over command-line arguments.
-class ArgIterator
-{
+class ArgIterator {
 public:
 	ArgIterator(int argCount, os_char **args)
-		: mArg{args}, mEnd{args + argCount}
-	{
-	}
+		: mArg{args}, mEnd{args + argCount} {}
 
 	// Get the next command-line argument.
-	os_string_view Next()
-	{
+	os_string_view Next() {
 		if (mArg == mEnd)
 			return {};
 		return *mArg++;
@@ -41,13 +34,10 @@ private:
 };
 
 // Definition for a configuration variable.
-class VarDefinition
-{
+class VarDefinition {
 public:
 	constexpr VarDefinition(std::string_view name, bool *value)
-		: mName{name}, mValue{value}
-	{
-	}
+		: mName{name}, mValue{value} {}
 
 	std::string_view name() const { return mName; }
 	bool &boolValue() const { return *mValue; }
@@ -59,16 +49,14 @@ private:
 
 const VarDefinition DebugContext{"DebugContext", &var::DebugContext};
 
-const VarDefinition *LookupVar(std::string_view name)
-{
+const VarDefinition *LookupVar(std::string_view name) {
 	if (name == DebugContext.name()) {
 		return &DebugContext;
 	}
 	return nullptr;
 }
 
-bool ParseBool(std::string_view value)
-{
+bool ParseBool(std::string_view value) {
 	if (value == "0" || value == "n" || value == "no" || value == "off" ||
 	    value == "false") {
 		return false;
@@ -82,8 +70,7 @@ bool ParseBool(std::string_view value)
 
 } // namespace
 
-void ParseCommandArguments(int argCount, os_char **args)
-{
+void ParseCommandArguments(int argCount, os_char **args) {
 	ArgIterator iter{argCount, args};
 	while (iter.HasArguments()) {
 		os_string_view arg = iter.Next();

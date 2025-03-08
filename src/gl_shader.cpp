@@ -7,13 +7,10 @@
 #include <limits>
 #include <string_view>
 
-namespace demo
-{
-namespace gl_shader
-{
+namespace demo {
+namespace gl_shader {
 
-namespace
-{
+namespace {
 
 constexpr std::string_view Vertex{
 	"#version 330\n"
@@ -30,8 +27,7 @@ constexpr std::string_view Fragment{
 	"}\n"};
 
 // Compile a shader from the given source code.
-GLuint CompileShader(GLenum shaderType, std::string_view source)
-{
+GLuint CompileShader(GLenum shaderType, std::string_view source) {
 	GLuint shader = glCreateShader(shaderType);
 	if (shader == 0) {
 		std::abort();
@@ -52,8 +48,7 @@ GLuint CompileShader(GLenum shaderType, std::string_view source)
 	return shader;
 }
 
-GLuint LinkProgram(GLuint vertex, GLuint fragment)
-{
+GLuint LinkProgram(GLuint vertex, GLuint fragment) {
 	GLuint program = glCreateProgram();
 	if (program == 0) {
 		std::abort();
@@ -76,8 +71,7 @@ GLuint LinkProgram(GLuint vertex, GLuint fragment)
 
 GLuint Program;
 
-void Init()
-{
+void Init() {
 	GLuint vertex = CompileShader(GL_VERTEX_SHADER, Vertex);
 	GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, Fragment);
 	GLuint program = LinkProgram(vertex, fragment);

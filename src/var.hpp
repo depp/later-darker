@@ -5,11 +5,9 @@
 
 #include "os_string.hpp"
 
-namespace demo
-{
+namespace demo {
 
-namespace var
-{
+namespace var {
 
 // If true, create a debug OpenGL context.
 extern bool DebugContext;

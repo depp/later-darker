@@ -12,11 +12,9 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 
-namespace demo
-{
+namespace demo {
 
-std::string ToString(os_string_view value)
-{
+std::string ToString(os_string_view value) {
 	std::string result;
 	if (!value.empty()) {
 		if (value.size() > std::numeric_limits<int>::max()) {
@@ -32,8 +30,7 @@ std::string ToString(os_string_view value)
 	return result;
 }
 
-os_string ToOSString(std::string_view value)
-{
+os_string ToOSString(std::string_view value) {
 	os_string result;
 	if (!value.empty()) {
 		if (value.size() > std::numeric_limits<int>::max()) {

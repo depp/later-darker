@@ -8,11 +8,9 @@
 #include <cmath>
 #include <numbers>
 
-namespace demo
-{
+namespace demo {
 
-namespace
-{
+namespace {
 
 constexpr float InverseAspect = 480.0f / 640.0f;
 constexpr float TriangleSize = 0.8f;
@@ -28,8 +26,7 @@ const float VertexData[6] = {
 
 } // namespace
 
-void TriangleScene::Init()
-{
+void TriangleScene::Init() {
 	glGenVertexArrays(1, &mArray);
 	glBindVertexArray(mArray);
 	glGenBuffers(1, &mBuffer);
@@ -40,8 +37,7 @@ void TriangleScene::Init()
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 8, 0);
 }
 
-void TriangleScene::Render(double time)
-{
+void TriangleScene::Render(double time) {
 	constexpr float d = std::numbers::pi_v<float> * 2.0f / 3.0f;
 	constexpr double rate = 0.3;
 	float a = static_cast<float>(std::fmod(time * rate, 1.0)) *

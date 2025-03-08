@@ -16,11 +16,9 @@
 #include <Windows.h>
 #include <shellapi.h>
 
-namespace
-{
+namespace {
 
-extern "C" void ErrorCallback(int error, const char *description)
-{
+extern "C" void ErrorCallback(int error, const char *description) {
 	(void)error;
 	std::string message;
 	message.append("GLFW error: ");
@@ -29,8 +27,7 @@ extern "C" void ErrorCallback(int error, const char *description)
 	MessageBoxW(nullptr, wmessage.c_str(), nullptr, MB_ICONSTOP);
 }
 
-void Main()
-{
+void Main() {
 	glfwSetErrorCallback(ErrorCallback);
 	if (!glfwInit()) {
 		std::exit(1);
@@ -95,11 +92,9 @@ void Main()
 // Windows
 // ============================================================================
 
-namespace
-{
+namespace {
 
-void ParseCommandLine(const wchar_t *cmdLine)
-{
+void ParseCommandLine(const wchar_t *cmdLine) {
 	int nArgs;
 	wchar_t **args = CommandLineToArgvW(cmdLine, &nArgs);
 	if (args == nullptr) {
@@ -112,8 +107,7 @@ void ParseCommandLine(const wchar_t *cmdLine)
 } // namespace
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
-                    _In_ LPWSTR lpCmdLine, _In_ int nShowCmd)
-{
+                    _In_ LPWSTR lpCmdLine, _In_ int nShowCmd) {
 	(void)hInstance;
 	(void)hPrevInstance;
 	(void)nShowCmd;

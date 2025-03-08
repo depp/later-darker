@@ -5,10 +5,8 @@
 
 #include "gl.hpp"
 
-namespace demo
-{
-namespace gl_shader
-{
+namespace demo {
+namespace gl_shader {
 
 extern GLuint Program;
 

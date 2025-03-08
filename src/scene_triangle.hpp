@@ -4,11 +4,9 @@
 #pragma once
 #include "gl.hpp"
 
-namespace demo
-{
+namespace demo {
 
-class TriangleScene
-{
+class TriangleScene {
 public:
 	TriangleScene() : mArray{0}, mBuffer{0} {}
 	TriangleScene(const TriangleScene &) = delete;

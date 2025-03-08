@@ -20,5 +20,4 @@ SpacesBeforeTrailingComments: 1
 Standard: Cpp11
 TabWidth: 4
 UseTab: AlignWithSpaces
-BreakBeforeBraces: Linux
 AlignEscapedNewlines: DontAlign
