@@ -36,6 +36,8 @@ void Main() {
 	    "A debug message; Unicode: \xce\xb1\xce\xb2"); // alpha, beta
 	LOG(Warn, "A warning");
 	LOG(Error, "An error message");
+	LOG(Info, "Has attributes",
+	    {{"x", -127}, {"y", true}, {"float", 123.9}, {"string", "abc"}});
 
 	glfwSetErrorCallback(ErrorCallback);
 	if (!glfwInit()) {
@@ -44,7 +46,8 @@ void Main() {
 
 	// All of these are necessary.
 	//
-	// - On Apple devices, context will be version 2.1 if no hints are provided.
+	// - On Apple devices, context will be version 2.1 if no hints are
+	// provided.
 	//   FORWARD_COMPAT, PROFILE, and VERSION are all required to get a
 	//   different result. The result is the highest version, probably
 	//   either 3.3 or 4.1.
@@ -52,7 +55,8 @@ void Main() {
 	// - On Mesa, 3.0 is the maximum without FORWARD_COMPAT, and 3.1 is the
 	//   maximum with FORWARD_COMPAT but without CORE_PROFILE.
 	//
-	// - With AMD or Nvidia drivers on Linux or Windows, you will always get the
+	// - With AMD or Nvidia drivers on Linux or Windows, you will always get
+	// the
 	//   highest version supported even without any hints.
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);

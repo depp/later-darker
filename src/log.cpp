@@ -5,6 +5,7 @@
 
 #include "var.hpp"
 
+#include <charconv>
 #include <limits>
 #include <string>
 
@@ -63,6 +64,29 @@ void AppendFileName(os_string *dest, std::string_view file) {
 	}
 }
 
+template <typename Func>
+void AppendToChars(os_string *dest, Func toChars) {
+	std::string buffer;
+	while (true) {
+		buffer.resize(buffer.capacity(), '\0');
+		std::to_chars_result result =
+			toChars(buffer.data(), buffer.data() + buffer.size());
+		if (result.ec == std::errc{}) {
+			Append(dest,
+			       std::string_view(buffer.data(), result.ptr - buffer.data()));
+			return;
+		}
+		buffer.push_back('\0');
+	}
+};
+
+constexpr std::wstring_view BoolTrue = L"true";
+constexpr std::wstring_view BoolFalse = L"false";
+
+std::wstring_view ToString(bool value) {
+	return value ? BoolTrue : BoolFalse;
+}
+
 } // namespace
 
 void Init() {
@@ -88,6 +112,12 @@ void Init() {
 
 void Log(Level level, std::string_view file, int line,
          std::string_view function, std::string_view message) {
+	Log(level, file, line, function, message, {});
+}
+
+void Log(Level level, std::string_view file, int line,
+         std::string_view function, std::string_view message,
+         std::initializer_list<Attr> attributes) {
 	if (ConsoleHandle == nullptr) {
 		return;
 	}
@@ -106,6 +136,45 @@ void Log(Level level, std::string_view file, int line,
 	Append(&entry, function);
 	entry.append(L"): ");
 	Append(&entry, message);
+	for (const Attr &attr : attributes) {
+		entry.push_back(L' ');
+		Append(&entry, attr.name());
+		entry.push_back(L'=');
+		const Value &value = attr.value();
+		switch (value.ValueKind()) {
+		case Kind::Null:
+			entry.append(L"(null)");
+			break;
+		case Kind::Int: {
+			long long x{value.IntValue()};
+			AppendToChars(&entry,
+			              [x](char *first, char *last) -> std::to_chars_result {
+							  return std::to_chars(first, last, x);
+						  });
+		} break;
+		case Kind::Uint: {
+			unsigned long long x{value.UintValue()};
+			AppendToChars(&entry,
+			              [x](char *first, char *last) -> std::to_chars_result {
+							  return std::to_chars(first, last, x);
+						  });
+		} break;
+		case Kind::Float: {
+			double x{value.FloatValue()};
+			AppendToChars(&entry,
+			              [x](char *first, char *last) -> std::to_chars_result {
+							  return std::to_chars(first, last, x);
+						  });
+		} break;
+		case Kind::Bool:
+			entry.append(ToString(value.BoolValue()));
+			break;
+		case Kind::String: {
+			std::string_view str = value.StringValue();
+			Append(&entry, str); // FIXME: quoting!
+		} break;
+		}
+	}
 	entry.push_back(L'\n');
 	if (entry.size() > std::numeric_limits<DWORD>::max()) {
 		std::abort();
