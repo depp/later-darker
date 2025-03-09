@@ -31,11 +31,11 @@ extern "C" void ErrorCallback(int error, const char *description) {
 
 void Main() {
 	log::Init();
-	log::Log(log::Level::Info, "Opened console");
-	log::Log(log::Level::Debug,
-	         "A debug message; Unicode: \xce\xb1\xce\xb2"); // alpha, beta
-	log::Log(log::Level::Warn, "A warning");
-	log::Log(log::Level::Error, "An error message");
+	LOG(Info, "Opened console");
+	LOG(Debug,
+	    "A debug message; Unicode: \xce\xb1\xce\xb2"); // alpha, beta
+	LOG(Warn, "A warning");
+	LOG(Error, "An error message");
 
 	glfwSetErrorCallback(ErrorCallback);
 	if (!glfwInit()) {

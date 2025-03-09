@@ -24,3 +24,5 @@ void Log(Level level, std::string_view message);
 
 } // namespace log
 } // namespace demo
+
+#define LOG(level, message) ::demo::log::Log(::demo::log::Level::level, message)
