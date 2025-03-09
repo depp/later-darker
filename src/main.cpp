@@ -32,7 +32,8 @@ extern "C" void ErrorCallback(int error, const char *description) {
 void Main() {
 	LogInit();
 	LogImpl(LogLevel::Info, "Opened console");
-	LogImpl(LogLevel::Debug, "A debug message");
+	LogImpl(LogLevel::Debug,
+	        "A debug message; Unicode: \xce\xb1\xce\xb2"); // alpha, beta
 	LogImpl(LogLevel::Warn, "A warning");
 	LogImpl(LogLevel::Error, "An error message");
 
