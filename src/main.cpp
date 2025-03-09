@@ -101,7 +101,7 @@ void ParseCommandLine(const wchar_t *cmdLine) {
 	if (args == nullptr) {
 		std::abort();
 	}
-	ParseCommandArguments(nArgs - 1, args + 1);
+	ParseCommandArguments(nArgs, args);
 	LocalFree(args);
 }
 
