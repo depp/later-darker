@@ -43,6 +43,26 @@ const LevelInfo &GetLevelInfo(Level level) {
 	return Levels[index];
 }
 
+void AppendFileName(os_string *dest, std::string_view file) {
+	// NOTE: We rely on this file being named ${prefix}src/log.cpp so we can
+	// figure out what the prefix is for other files.
+	constexpr std::string_view thisFile = __FILE__;
+	constexpr std::string_view prefix =
+		thisFile.substr(0, thisFile.size() - 11);
+	if (file.size() < prefix.size() ||
+	    file.substr(0, prefix.size()) != prefix) {
+		Append(dest, file);
+		return;
+	}
+	std::string_view relativeFile = file.substr(prefix.size());
+	for (char c : relativeFile) {
+		if (c == '\\') {
+			c = '/';
+		}
+		dest->push_back(c);
+	}
+}
+
 } // namespace
 
 void Init() {
@@ -79,7 +99,7 @@ void Log(Level level, std::string_view file, int line,
 		entry.append(L"\x1b[0m");
 	}
 	entry.push_back(L' ');
-	Append(&entry, file);
+	AppendFileName(&entry, file);
 	entry.push_back(L':');
 	Append(&entry, std::to_string(line));
 	entry.append(L" (");
