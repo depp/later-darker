@@ -5,7 +5,6 @@
 
 #include "var.hpp"
 
-#include <cstdio>
 #include <limits>
 #include <string>
 
@@ -24,15 +23,15 @@ namespace {
 HANDLE ConsoleHandle;
 
 struct LogLevelInfo {
-	std::string_view color;
-	std::string_view name;
+	std::wstring_view color;
+	std::wstring_view name;
 };
 
 const LogLevelInfo LogLevels[] = {
-	{"\x1b[36m", "DEBUG"},
-	{"", "INFO"},
-	{"\x1b[33m", "WARN"},
-	{"\x1b[31m", "ERROR"},
+	{L"\x1b[36m", L"DEBUG"},
+	{L"", L"INFO"},
+	{L"\x1b[33m", L"WARN"},
+	{L"\x1b[31m", L"ERROR"},
 };
 
 const LogLevelInfo &GetLogLevelInfo(LogLevel level) {
@@ -72,21 +71,21 @@ void LogImpl(LogLevel level, std::string_view message) {
 		return;
 	}
 	const LogLevelInfo &levelInfo = GetLogLevelInfo(level);
-	std::string entry;
+	std::wstring entry;
 	entry.append(levelInfo.color);
 	entry.append(levelInfo.name);
 	if (!levelInfo.color.empty()) {
-		entry.append("\x1b[0m");
+		entry.append(L"\x1b[0m");
 	}
-	entry.append(": ");
-	entry.append(message);
-	entry.push_back('\n');
+	entry.append(L": ");
+	Append(&entry, message);
+	entry.push_back(L'\n');
 	if (entry.size() > std::numeric_limits<DWORD>::max()) {
 		std::abort();
 	}
 	DWORD count = static_cast<DWORD>(entry.size());
 	DWORD written;
-	WriteFile(ConsoleHandle, entry.data(), count, &written, nullptr);
+	WriteConsoleW(ConsoleHandle, entry.data(), count, &written, nullptr);
 }
 
 } // namespace demo
