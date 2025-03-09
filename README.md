@@ -32,7 +32,10 @@ In Visual Studio, go to **Debug** → **Debug and Launch Settings for later-dark
       "project": "CMakeLists.txt",
       "projectTarget": "later-darker.exe",
       "name": "later-darker.exe",
-      "args": [ "DebugContext=yes" ]
+      "args": [
+        "AllocConsole=yes",
+        "DebugContext=yes"
+      ]
     }
   ]
 }

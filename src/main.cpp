@@ -9,6 +9,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include <cstdio>
 #include <cstdlib>
 
 #define UNICODE 1
@@ -105,6 +106,27 @@ void ParseCommandLine(const wchar_t *cmdLine) {
 	LocalFree(args);
 }
 
+void CreateConsole() {
+	BOOL ok = AllocConsole();
+	if (!ok) {
+		std::abort();
+	}
+	FILE *fp;
+	fp = _wfreopen(L"CONIN$", L"r", stdin);
+	if (fp == nullptr) {
+		std::abort();
+	}
+	fp = _wfreopen(L"CONOUT$", L"w", stdout);
+	if (fp == nullptr) {
+		std::abort();
+	}
+	fp = _wfreopen(L"CONOUT$", L"w", stderr);
+	if (fp == nullptr) {
+		std::abort();
+	}
+	std::puts("Opened console!");
+}
+
 } // namespace
 
 } // namespace demo
@@ -115,5 +137,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	(void)hPrevInstance;
 	(void)nShowCmd;
 	demo::ParseCommandLine(lpCmdLine);
+	if (demo::var::AllocConsole) {
+		demo::CreateConsole();
+	}
 	demo::Main();
 }

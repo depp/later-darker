@@ -12,6 +12,9 @@ namespace var {
 // If true, create a debug OpenGL context.
 extern bool DebugContext;
 
+// If true, allocate a console (Windows).
+extern bool AllocConsole;
+
 } // namespace var
 
 // Parse the program's command-line arguments.

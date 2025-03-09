@@ -8,8 +8,9 @@ namespace demo {
 namespace var {
 
 bool DebugContext;
+bool AllocConsole;
 
-}
+} // namespace var
 
 namespace {
 
@@ -47,11 +48,16 @@ private:
 	bool *mValue;
 };
 
-const VarDefinition DebugContext{"DebugContext", &var::DebugContext};
+const VarDefinition VarDefinitions[] = {
+	{"DebugContext", &var::DebugContext},
+	{"AllocConsole", &var::AllocConsole},
+};
 
 const VarDefinition *LookupVar(std::string_view name) {
-	if (name == DebugContext.name()) {
-		return &DebugContext;
+	for (const VarDefinition &definition : VarDefinitions) {
+		if (definition.name() == name) {
+			return &definition;
+		}
 	}
 	return nullptr;
 }
