@@ -23,7 +23,9 @@ add_executable(later-darker WIN32
 	"src/main.cpp"
 	"src/os_string.cpp"
 	"src/scene_triangle.cpp"
+	"src/text_buffer.cpp"
 	"src/var.cpp"
+	"src/wide_text_buffer.cpp"
 )
 
 if(MSVC)
