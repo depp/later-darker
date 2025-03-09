@@ -11,7 +11,6 @@
 #include <GLFW/glfw3.h>
 
 #include <cstdio>
-#include <cstdlib>
 
 #define UNICODE 1
 #define WIN32_LEAN_AND_MEAN 1
@@ -31,6 +30,12 @@ extern "C" void ErrorCallback(int error, const char *description) {
 }
 
 void Main() {
+	LogInit();
+	LogImpl(LogLevel::Info, "Opened console");
+	LogImpl(LogLevel::Debug, "A debug message");
+	LogImpl(LogLevel::Warn, "A warning");
+	LogImpl(LogLevel::Error, "An error message");
+
 	glfwSetErrorCallback(ErrorCallback);
 	if (!glfwInit()) {
 		std::exit(1);
@@ -107,27 +112,6 @@ void ParseCommandLine(const wchar_t *cmdLine) {
 	LocalFree(args);
 }
 
-void CreateConsole() {
-	BOOL ok = AllocConsole();
-	if (!ok) {
-		std::abort();
-	}
-	FILE *fp;
-	fp = _wfreopen(L"CONIN$", L"r", stdin);
-	if (fp == nullptr) {
-		std::abort();
-	}
-	fp = _wfreopen(L"CONOUT$", L"w", stdout);
-	if (fp == nullptr) {
-		std::abort();
-	}
-	fp = _wfreopen(L"CONOUT$", L"w", stderr);
-	if (fp == nullptr) {
-		std::abort();
-	}
-	LogImpl(LogLevel::Info, "Opened console");
-}
-
 } // namespace
 
 } // namespace demo
@@ -138,8 +122,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	(void)hPrevInstance;
 	(void)nShowCmd;
 	demo::ParseCommandLine(lpCmdLine);
-	if (demo::var::AllocConsole) {
-		demo::CreateConsole();
-	}
 	demo::Main();
+	return 0;
 }

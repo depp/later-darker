@@ -15,6 +15,9 @@ enum class LogLevel {
 	Error,
 };
 
+// Initialize the logging system.
+void LogInit();
+
 // Write a message to the log.
 void LogImpl(LogLevel level, std::string_view message);
 
