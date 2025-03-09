@@ -30,12 +30,12 @@ extern "C" void ErrorCallback(int error, const char *description) {
 }
 
 void Main() {
-	LogInit();
-	LogImpl(LogLevel::Info, "Opened console");
-	LogImpl(LogLevel::Debug,
-	        "A debug message; Unicode: \xce\xb1\xce\xb2"); // alpha, beta
-	LogImpl(LogLevel::Warn, "A warning");
-	LogImpl(LogLevel::Error, "An error message");
+	log::Init();
+	log::Log(log::Level::Info, "Opened console");
+	log::Log(log::Level::Debug,
+	         "A debug message; Unicode: \xce\xb1\xce\xb2"); // alpha, beta
+	log::Log(log::Level::Warn, "A warning");
+	log::Log(log::Level::Error, "An error message");
 
 	glfwSetErrorCallback(ErrorCallback);
 	if (!glfwInit()) {

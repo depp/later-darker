@@ -17,34 +17,35 @@
 #include <Windows.h>
 
 namespace demo {
+namespace log {
 
 namespace {
 
 HANDLE ConsoleHandle;
 
-struct LogLevelInfo {
+struct LevelInfo {
 	std::wstring_view color;
 	std::wstring_view name;
 };
 
-const LogLevelInfo LogLevels[] = {
+const LevelInfo Levels[] = {
 	{L"\x1b[36m", L"DEBUG"},
 	{L"", L"INFO"},
 	{L"\x1b[33m", L"WARN"},
 	{L"\x1b[31m", L"ERROR"},
 };
 
-const LogLevelInfo &GetLogLevelInfo(LogLevel level) {
+const LevelInfo &GetLevelInfo(Level level) {
 	int index = static_cast<int>(level);
-	if (index < 0 || std::size(LogLevels) <= index) {
+	if (index < 0 || std::size(Levels) <= index) {
 		std::abort();
 	}
-	return LogLevels[index];
+	return Levels[index];
 }
 
 } // namespace
 
-void LogInit() {
+void Init() {
 	if (!var::AllocConsole) {
 		return;
 	}
@@ -66,11 +67,11 @@ void LogInit() {
 	ConsoleHandle = console;
 }
 
-void LogImpl(LogLevel level, std::string_view message) {
+void Log(Level level, std::string_view message) {
 	if (ConsoleHandle == nullptr) {
 		return;
 	}
-	const LogLevelInfo &levelInfo = GetLogLevelInfo(level);
+	const LevelInfo &levelInfo = GetLevelInfo(level);
 	std::wstring entry;
 	entry.append(levelInfo.color);
 	entry.append(levelInfo.name);
@@ -88,4 +89,5 @@ void LogImpl(LogLevel level, std::string_view message) {
 	WriteConsoleW(ConsoleHandle, entry.data(), count, &written, nullptr);
 }
 
+} // namespace log
 } // namespace demo

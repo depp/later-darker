@@ -6,9 +6,10 @@
 #include <string_view>
 
 namespace demo {
+namespace log {
 
 // Log message severity level.
-enum class LogLevel {
+enum class Level {
 	Debug,
 	Info,
 	Warn,
@@ -16,9 +17,10 @@ enum class LogLevel {
 };
 
 // Initialize the logging system.
-void LogInit();
+void Init();
 
 // Write a message to the log.
-void LogImpl(LogLevel level, std::string_view message);
+void Log(Level level, std::string_view message);
 
+} // namespace log
 } // namespace demo
