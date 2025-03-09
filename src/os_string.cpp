@@ -14,35 +14,47 @@
 
 namespace demo {
 
+void Append(std::string *dest, os_string_view value) {
+	if (value.empty()) {
+		return;
+	}
+	if (value.size() > std::numeric_limits<int>::max()) {
+		std::abort();
+	}
+	int nWideChars = static_cast<int>(value.size());
+	int nChars = WideCharToMultiByte(CP_UTF8, 0, value.data(), nWideChars,
+	                                 nullptr, 0, nullptr, nullptr);
+	size_t offset = dest->size();
+	dest->resize(offset + nChars);
+	WideCharToMultiByte(CP_UTF8, 0, value.data(), nWideChars,
+	                    dest->data() + offset, nChars, nullptr, nullptr);
+}
+
+void Append(os_string *dest, std::string_view value) {
+	if (value.empty()) {
+		return;
+	}
+	if (value.size() > std::numeric_limits<int>::max()) {
+		std::abort();
+	}
+	int nChars = static_cast<int>(value.size());
+	int nWideChars =
+		MultiByteToWideChar(CP_UTF8, 0, value.data(), nChars, nullptr, 0);
+	size_t offset = dest->size();
+	dest->resize(offset + nWideChars);
+	MultiByteToWideChar(CP_UTF8, 0, value.data(), nChars, dest->data() + offset,
+	                    nWideChars);
+}
+
 std::string ToString(os_string_view value) {
 	std::string result;
-	if (!value.empty()) {
-		if (value.size() > std::numeric_limits<int>::max()) {
-			std::abort();
-		}
-		int nWideChars = static_cast<int>(value.size());
-		int nChars = WideCharToMultiByte(CP_UTF8, 0, value.data(), nWideChars,
-		                                 nullptr, 0, nullptr, nullptr);
-		result.resize(nChars);
-		WideCharToMultiByte(CP_UTF8, 0, value.data(), nWideChars, result.data(),
-		                    nChars, nullptr, nullptr);
-	}
+	Append(&result, value);
 	return result;
 }
 
 os_string ToOSString(std::string_view value) {
 	os_string result;
-	if (!value.empty()) {
-		if (value.size() > std::numeric_limits<int>::max()) {
-			std::abort();
-		}
-		int nChars = static_cast<int>(value.size());
-		int nWideChars =
-			MultiByteToWideChar(CP_UTF8, 0, value.data(), nChars, nullptr, 0);
-		result.resize(nWideChars);
-		MultiByteToWideChar(CP_UTF8, 0, value.data(), nChars, result.data(),
-		                    nWideChars);
-	}
+	Append(&result, value);
 	return result;
 }
 
