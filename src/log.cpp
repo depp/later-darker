@@ -56,7 +56,6 @@ void Init() {
 	HANDLE console = CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_WRITE,
 	                             nullptr, OPEN_EXISTING, 0, nullptr);
 	if (console == INVALID_HANDLE_VALUE) {
-		DWORD err = GetLastError();
 		std::abort();
 	}
 	ok = SetConsoleMode(
