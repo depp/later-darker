@@ -20,9 +20,12 @@ enum class Level {
 void Init();
 
 // Write a message to the log.
-void Log(Level level, std::string_view message);
+void Log(Level level, std::string_view file, int line,
+         std::string_view function, std::string_view message);
 
 } // namespace log
 } // namespace demo
 
-#define LOG(level, message) ::demo::log::Log(::demo::log::Level::level, message)
+#define LOG(level, message) \
+	::demo::log::Log(::demo::log::Level::level, __FILE__, __LINE__, __func__, \
+	                 message)

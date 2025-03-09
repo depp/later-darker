@@ -66,7 +66,8 @@ void Init() {
 	ConsoleHandle = console;
 }
 
-void Log(Level level, std::string_view message) {
+void Log(Level level, std::string_view file, int line,
+         std::string_view function, std::string_view message) {
 	if (ConsoleHandle == nullptr) {
 		return;
 	}
@@ -77,7 +78,13 @@ void Log(Level level, std::string_view message) {
 	if (!levelInfo.color.empty()) {
 		entry.append(L"\x1b[0m");
 	}
-	entry.append(L": ");
+	entry.push_back(L' ');
+	Append(&entry, file);
+	entry.push_back(L':');
+	Append(&entry, std::to_string(line));
+	entry.append(L" (");
+	Append(&entry, function);
+	entry.append(L"): ");
 	Append(&entry, message);
 	entry.push_back(L'\n');
 	if (entry.size() > std::numeric_limits<DWORD>::max()) {
