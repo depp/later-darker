@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "gl.hpp"
 #include "gl_shader.hpp"
+#include "log.hpp"
 #include "os_string.hpp"
 #include "scene_triangle.hpp"
 #include "var.hpp"
@@ -124,7 +125,7 @@ void CreateConsole() {
 	if (fp == nullptr) {
 		std::abort();
 	}
-	std::puts("Opened console!");
+	LogImpl(LogLevel::Info, "Opened console");
 }
 
 } // namespace
