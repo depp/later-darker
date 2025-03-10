@@ -153,17 +153,14 @@ struct LogBuffer {
 	LogBuffer() : buffer{bufferData}, wideBuffer{wideBufferData} {}
 
 	// Format a log message and write it to the console.
-	void Log(Level level, const Location &location, std::string_view message,
-	         std::span<const Attr> attributes);
+	void Log(Level level, const Location &location, const Message &message);
 
 	// Format a message as a multi-line block. Used for dialogs.
-	void LogBlock(const Location &location, std::string_view message,
-	              std::span<const Attr> attributes);
+	void LogBlock(const Location &location, const Message &message);
 };
 
 void LogBuffer::Log(Level level, const Location &location,
-                    std::string_view message,
-                    std::span<const Attr> attributes) {
+                    const Message &message) {
 	if (!LogAvailable()) {
 		return;
 	}
@@ -181,8 +178,8 @@ void LogBuffer::Log(Level level, const Location &location,
 		AppendLocation(buffer, location);
 		buffer.Append(": ");
 	}
-	buffer.Append(message);
-	for (const Attr &attr : attributes) {
+	buffer.Append(message.message);
+	for (const Attr &attr : message.attributes) {
 		buffer.AppendChar(' ');
 		buffer.Append(attr.name());
 		buffer.AppendChar('=');
@@ -199,12 +196,11 @@ void LogBuffer::Log(Level level, const Location &location,
 	WriteConsoleW(ConsoleHandle, wideBuffer.Start(), size, &written, nullptr);
 }
 
-void LogBuffer::LogBlock(const Location &location, std::string_view message,
-                         std::span<const Attr> attributes) {
+void LogBuffer::LogBlock(const Location &location, const Message &message) {
 	buffer.Clear();
-	buffer.Append(message);
+	buffer.Append(message.message);
 	buffer.AppendChar('\n');
-	for (const Attr &attr : attributes) {
+	for (const Attr &attr : message.attributes) {
 		buffer.AppendChar('\n');
 		buffer.Append(attr.name());
 		buffer.Append(": ");
@@ -239,28 +235,22 @@ void Init() {
 	ConsoleHandle = console;
 }
 
-void Log(Level level, const Location &location, std::string_view message) {
-	Log(level, location, message, {});
-}
-
-void Log(Level level, const Location &location, std::string_view message,
-         std::initializer_list<Attr> attributes) {
+void Log(Level level, const Location &location, const Message &message) {
 	if (!LogAvailable()) {
 		return;
 	}
 
 	LogBuffer buffer;
-	buffer.Log(level, location, message, attributes);
+	buffer.Log(level, location, message);
 }
 
 [[noreturn]]
-void Fail(const Location &location, std::string_view message,
-          std::span<const Attr> attributes) {
+void Fail(const Location &location, const Message &message) {
 	LogBuffer buffer;
 
-	buffer.Log(Level::Error, location, message, attributes);
+	buffer.Log(Level::Error, location, message);
 
-	buffer.LogBlock(location, message, attributes);
+	buffer.LogBlock(location, message);
 	buffer.buffer.AppendChar('\0');
 	buffer.wideBuffer.Clear();
 	buffer.wideBuffer.AppendMultiByte(buffer.buffer.Contents());
@@ -270,8 +260,7 @@ void Fail(const Location &location, std::string_view message,
 
 [[noreturn]]
 void CheckFail(const Location &location, std::string_view condition) {
-	Fail(location, "Check failed.",
-	     std::array<Attr, 1>({{"condition", condition}}));
+	Fail(location, Message{"Check failed.", {{"condition", condition}}});
 }
 
 } // namespace log

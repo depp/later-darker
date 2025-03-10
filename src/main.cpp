@@ -27,8 +27,9 @@ namespace demo {
 namespace {
 
 extern "C" void ErrorCallback(int error, const char *description) {
-	log::Log(log::Level::Error, log::Location::Zero, "GLFW error.",
-	         {{"code", error}, {"description", description}});
+	log::Log(log::Level::Error, log::Location::Zero,
+	         log::Message{"GLFW error.",
+	                      {{"code", error}, {"description", description}}});
 }
 
 [[noreturn]]
@@ -42,7 +43,7 @@ void FailGLFW(const log::Location &location, std::string_view message) {
 		attributeData[0] = {"description", description};
 		attributes = attributeData;
 	}
-	Fail(location, message, attributes);
+	Fail(location, log::Message{message, attributes});
 }
 
 void Main() {

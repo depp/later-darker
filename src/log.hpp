@@ -140,12 +140,23 @@ struct Location {
 	bool IsEmpty() const { return file.empty(); }
 };
 
-// Write a message to the log.
-void Log(Level level, const Location &location, std::string_view message);
+// A message and attributes wrapped together.
+struct Message {
+	std::string_view message;
+	std::span<const Attr> attributes;
+
+	explicit constexpr Message(std::string_view message)
+		: message{message}, attributes{} {}
+	explicit constexpr Message(std::string_view message,
+	                           std::initializer_list<Attr> attributes)
+		: message{message}, attributes{attributes} {}
+	explicit constexpr Message(std::string_view message,
+	                           std::span<const Attr> attributes)
+		: message{message}, attributes{attributes} {}
+};
 
 // Write a message to the log.
-void Log(Level level, const Location &location, std::string_view message,
-         std::initializer_list<Attr> attributes);
+void Log(Level level, const Location &location, const Message &message);
 
 // Shows an error message for a CHECK() failure and exits the program.
 [[noreturn]]
@@ -153,8 +164,7 @@ void CheckFail(const Location &location, std::string_view condition);
 
 // Shows an error message and exits the program.
 [[noreturn]]
-void Fail(const Location &location, std::string_view message,
-          std::span<const Attr> attributes);
+void Fail(const Location &location, const Message &message);
 
 } // namespace log
 } // namespace demo
@@ -166,7 +176,8 @@ void Fail(const Location &location, std::string_view message,
 
 // Write a message to the log.
 #define LOG(level, ...) \
-	::demo::log::Log(::demo::log::Level::level, LOG_LOCATION, __VA_ARGS__)
+	::demo::log::Log(::demo::log::Level::level, LOG_LOCATION, \
+	                 ::demo::log::Message{__VA_ARGS__})
 
 // Check that a condition is true. If not, show an error message and exit the
 // program.
