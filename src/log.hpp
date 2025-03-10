@@ -127,17 +127,26 @@ private:
 // Initialize the logging system.
 void Init();
 
-// Write a message to the log.
-void Log(Level level, std::string_view file, int line,
-         std::string_view function, std::string_view message);
+// A location in the source code.
+struct Location {
+	std::string_view file;
+	int line;
+	std::string_view function;
+};
 
-void Log(Level level, std::string_view file, int line,
-         std::string_view function, std::string_view message,
+// Write a message to the log.
+void Log(Level level, const Location &location, std::string_view message);
+
+void Log(Level level, const Location &location, std::string_view message,
          std::initializer_list<Attr> attributes);
 
 } // namespace log
 } // namespace demo
 
+#define LOG_LOCATION \
+	::demo::log::Location { \
+		__FILE__, __LINE__, __func__ \
+	}
+
 #define LOG(level, ...) \
-	::demo::log::Log(::demo::log::Level::level, __FILE__, __LINE__, __func__, \
-	                 __VA_ARGS__)
+	::demo::log::Log(::demo::log::Level::level, LOG_LOCATION, __VA_ARGS__)
