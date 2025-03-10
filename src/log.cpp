@@ -93,11 +93,13 @@ void Init() {
 	ConsoleHandle = console;
 }
 
-void Log(Level level, std::source_location location, std::string_view message) {
-	Log(level, location, message, {});
+void Log(Level level, std::string_view file, int line,
+         std::string_view function, std::string_view message) {
+	Log(level, file, line, function, message, {});
 }
 
-void Log(Level level, std::source_location location, std::string_view message,
+void Log(Level level, std::string_view file, int line,
+         std::string_view function, std::string_view message,
          std::initializer_list<Attr> attributes) {
 	if (ConsoleHandle == nullptr) {
 		return;
@@ -113,15 +115,12 @@ void Log(Level level, std::source_location location, std::string_view message,
 		buffer.Append("\x1b[0m");
 	}
 	buffer.AppendChar(' ');
-	AppendFileName(buffer, location.file_name());
+	AppendFileName(buffer, file);
 	buffer.AppendChar(':');
-	buffer.AppendNumber(location.line());
-	// This is contains the full function signature, which is noisy. At least,
-	// on MSVC.
-	// buffer.Append(" (");
-	// buffer.Append(location.function_name());
-	// buffer.Append("): ");
-	buffer.Append(": ");
+	buffer.AppendNumber(line);
+	buffer.Append(" (");
+	buffer.Append(function);
+	buffer.Append("): ");
 	buffer.Append(message);
 	for (const Attr &attr : attributes) {
 		buffer.AppendChar(' ');
