@@ -132,39 +132,16 @@ void TextBuffer::AppendEscaped(std::string_view str) {
 				goto hexEscape;
 			}
 			p += 3;
-			Reserve(10);
-			mPos[0] = '\\';
-			mPos[1] = 'U';
-			mPos[2] = '0';
-			mPos[3] = '0';
-			mPos[4] = HexDigit[uch >> 20];
-			mPos[5] = HexDigit[(uch >> 16) & 15];
-			mPos[6] = HexDigit[(uch >> 12) & 15];
-			mPos[7] = HexDigit[(uch >> 8) & 15];
-			mPos[8] = HexDigit[(uch >> 4) & 15];
-			mPos[9] = HexDigit[uch & 15];
-			mPos += 10;
+			AppendHexEscape32(uch);
 			continue;
 		}
 
 	hexEscape:
-		Reserve(4);
-		mPos[0] = '\\';
-		mPos[1] = 'x';
-		mPos[2] = HexDigit[ch >> 4];
-		mPos[3] = HexDigit[ch & 15];
-		mPos += 4;
+		AppendHexEscape8(ch);
 		continue;
 
 	unicodeEscapeShort:
-		Reserve(6);
-		mPos[0] = '\\';
-		mPos[1] = 'u';
-		mPos[2] = HexDigit[uch >> 12];
-		mPos[3] = HexDigit[(uch >> 8) & 15];
-		mPos[4] = HexDigit[(uch >> 4) & 15];
-		mPos[5] = HexDigit[uch & 15];
-		mPos += 6;
+		AppendHexEscape16(uch);
 	}
 }
 
@@ -243,6 +220,41 @@ void TextBuffer::Reallocate(std::size_t newCapacity) {
 	mPos = ptr + offset;
 	mEnd = ptr + newCapacity;
 	mIsDynamic = true;
+}
+
+void TextBuffer::AppendHexEscape8(unsigned ch) {
+	Reserve(4);
+	mPos[0] = '\\';
+	mPos[1] = 'x';
+	mPos[2] = HexDigit[ch >> 4];
+	mPos[3] = HexDigit[ch & 15];
+	mPos += 4;
+}
+
+void TextBuffer::AppendHexEscape16(unsigned ch) {
+	Reserve(6);
+	mPos[0] = '\\';
+	mPos[1] = 'u';
+	mPos[2] = HexDigit[ch >> 12];
+	mPos[3] = HexDigit[(ch >> 8) & 15];
+	mPos[4] = HexDigit[(ch >> 4) & 15];
+	mPos[5] = HexDigit[ch & 15];
+	mPos += 6;
+}
+
+void TextBuffer::AppendHexEscape32(unsigned ch) {
+	Reserve(10);
+	mPos[0] = '\\';
+	mPos[1] = 'U';
+	mPos[2] = '0';
+	mPos[3] = '0';
+	mPos[4] = HexDigit[ch >> 20];
+	mPos[5] = HexDigit[(ch >> 16) & 15];
+	mPos[6] = HexDigit[(ch >> 12) & 15];
+	mPos[7] = HexDigit[(ch >> 8) & 15];
+	mPos[8] = HexDigit[(ch >> 4) & 15];
+	mPos[9] = HexDigit[ch & 15];
+	mPos += 10;
 }
 
 } // namespace demo
