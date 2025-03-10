@@ -33,10 +33,11 @@ struct LevelInfo {
 	std::string_view name;
 };
 
+// These names all have the same width so log messages line up.
 const LevelInfo Levels[] = {
 	{"\x1b[36m", "DEBUG"},
-	{"", "INFO"},
-	{"\x1b[33m", "WARN"},
+	{"", "INFO "},
+	{"\x1b[33m", "WARN "},
 	{"\x1b[31m", "ERROR"},
 };
 
