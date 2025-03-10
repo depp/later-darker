@@ -65,17 +65,12 @@ bool DoesNeedQuotes(std::string_view str, Context context) {
 	if (str.empty()) {
 		return true;
 	}
-	unsigned minCh;
-	switch (context) {
-	case Context::Inline:
-		minCh = 33;
-		break;
-	case Context::Line:
-		minCh = 32;
+	unsigned minCh = 33;
+	if (context == Context::Line) {
 		if (str[0] == ' ' || *(str.end() - 1) == ' ') {
 			return true;
 		}
-		break;
+		minCh = 32;
 	}
 	for (auto p = str.begin(), e = str.end(); p != e; ++p) {
 		const unsigned ch = static_cast<unsigned char>(*p);
