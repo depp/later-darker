@@ -79,6 +79,9 @@ public:
 	// Append a string with the characters escaped as necessary.
 	void AppendEscaped(std::string_view str);
 
+	// Append a string.
+	void AppendWide(const std::wstring_view value);
+
 	// Append a number.
 	void AppendNumber(long long value);
 	// Append a number.

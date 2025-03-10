@@ -145,6 +145,56 @@ void TextBuffer::AppendEscaped(std::string_view str) {
 	}
 }
 
+void TextBuffer::AppendWide(std::wstring_view value) {
+	const wchar_t *ptr = value.data(), *end = ptr + value.size();
+	while (ptr != end) {
+		unsigned ch = static_cast<unsigned short>(*ptr++);
+		if (ch < 0x80) {
+			if (mPos == mEnd) {
+				Grow();
+			}
+			*mPos++ = static_cast<char>(ch);
+		} else if (ch < 0x800) {
+			Reserve(2);
+			mPos[0] = static_cast<char>(0xc0u | (ch >> 6));
+			mPos[1] = static_cast<char>(0x80u | (ch & 0x3fu));
+			mPos += 2;
+		} else if (ch < 0xd800 || 0xe000 <= ch) {
+			Reserve(3);
+			mPos[0] = static_cast<char>(0xe0u | (ch >> 12));
+			mPos[1] = static_cast<char>(0x80u | ((ch >> 6) & 0x3fu));
+			mPos[2] = static_cast<char>(0x80u | (ch & 0x3fu));
+			mPos += 3;
+		} else {
+			constexpr unsigned off = (0xd800u << 10) + 0xdc00u - 0x10000u;
+			unsigned ch2;
+			if (0xdc00 <= ch || ptr == end) {
+				goto replacement;
+			}
+			ch2 = static_cast<unsigned short>(*ptr);
+			if (ch2 < 0xdc00 || 0xe000 <= ch2) {
+				goto replacement;
+			}
+			ptr++;
+			ch = (ch << 10) + ch2 - off;
+			Reserve(4);
+			mPos[0] = static_cast<char>(0xf0u | (ch >> 18));
+			mPos[1] = static_cast<char>(0x80u | ((ch >> 12) & 0x3fu));
+			mPos[2] = static_cast<char>(0x80u | ((ch >> 6) & 0x3fu));
+			mPos[3] = static_cast<char>(0x80u | (ch & 0x3fu));
+			mPos += 4;
+			continue;
+
+		replacement:
+			Reserve(3);
+			mPos[0] = static_cast<char>(0xef);
+			mPos[1] = static_cast<char>(0xbf);
+			mPos[2] = static_cast<char>(0xbd);
+			mPos += 3;
+		}
+	}
+}
+
 void TextBuffer::AppendNumber(long long value) {
 	AppendFunction([value](char *first, char *last) -> char * {
 		std::to_chars_result result = std::to_chars(first, last, value);

@@ -86,7 +86,8 @@ void ParseCommandArguments(int argCount, os_char **args) {
 		std::size_t pos = arg.find('=');
 		if (pos == os_string_view::npos) {
 			// FIXME: show arg.
-			FAIL("Invalid command-line argument syntax.");
+			FAIL("Invalid command-line argument syntax.",
+			     log::Attr{"argument", arg});
 		}
 		std::string name = ToString(arg.substr(0, pos));
 		const VarDefinition *definition = LookupVar(name);

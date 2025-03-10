@@ -31,6 +31,7 @@ enum class Kind {
 	Float,
 	Bool,
 	String,
+	WideString,
 };
 
 // Suppress uninitialized member variable warning. This arises from the union.
@@ -49,9 +50,17 @@ private:
 		constexpr String() = default;
 		constexpr String(std::string_view value)
 			: ptr{value.data()}, size{value.size()} {}
-		constexpr operator std::string_view() const {
-			return std::string_view{ptr, size};
-		}
+		constexpr operator std::string_view() const { return {ptr, size}; }
+	};
+
+	struct WideString {
+		const wchar_t *ptr;
+		size_t size;
+
+		constexpr WideString() = default;
+		constexpr WideString(std::wstring_view value)
+			: ptr{value.data()}, size{value.size()} {}
+		constexpr operator std::wstring_view() const { return {ptr, size}; }
 	};
 
 public:
@@ -85,12 +94,27 @@ public:
 		typename SV,
 		std::enable_if_t<
 			std::conjunction_v<
-				std::is_convertible<const SV &, std::basic_string_view<char>>,
+				std::is_convertible<const SV &, std::string_view>,
 				std::negation<std::is_convertible<const SV &, const char *>>>,
 			bool> = true>
 	constexpr Value(const SV &value) : mKind{Kind::String} {
 		std::string_view view = value;
 		mData.stringValue = view;
+	}
+
+	constexpr Value(const wchar_t *value) : mKind{Kind::WideString} {
+		mData.wideStringValue = std::wstring_view{value};
+	}
+	template <
+		typename SV,
+		std::enable_if_t<std::conjunction_v<
+							 std::is_convertible<const SV &, std::wstring_view>,
+							 std::negation<std::is_convertible<
+								 const SV &, const wchar_t *>>>,
+	                     bool> = true>
+	constexpr Value(const SV &value) : mKind{Kind::WideString} {
+		std::wstring_view view = value;
+		mData.wideStringValue = view;
 	}
 
 	// Getters.
@@ -111,6 +135,11 @@ public:
 		return mKind == Kind::String ? std::string_view(mData.stringValue)
 		                             : std::string_view{};
 	}
+	std::wstring_view WideStringValue() const {
+		return mKind == Kind::WideString
+		           ? std::wstring_view(mData.wideStringValue)
+		           : std::wstring_view{};
+	}
 
 private:
 	Kind mKind;
@@ -120,6 +149,7 @@ private:
 		double floatValue;
 		bool boolValue;
 		String stringValue;
+		WideString wideStringValue;
 	} mData;
 };
 

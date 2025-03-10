@@ -136,6 +136,11 @@ void AppendValue(TextBuffer &out, const Value &value, Context context) {
 			out.Append(str);
 		}
 	} break;
+	case Kind::WideString: {
+		std::wstring_view str = value.WideStringValue();
+		// FIXME: Quote.
+		out.AppendWide(str);
+	} break;
 	}
 }
 
