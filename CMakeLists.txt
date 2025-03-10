@@ -10,7 +10,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(glad)
 
 add_subdirectory("${glad_SOURCE_DIR}/cmake" glad_cmake)
-glad_add_library(glad_gl33 SHARED REPRODUCIBLE API gl:core=3.3)
+glad_add_library(glad_gl33 SHARED REPRODUCIBLE API gl:core=3.3 EXTENSIONS GL_KHR_debug)
 
 find_package(glfw3 CONFIG REQUIRED)
 
@@ -26,7 +26,7 @@ add_executable(later-darker WIN32
 	"src/text_buffer.cpp"
 	"src/var.cpp"
 	"src/wide_text_buffer.cpp"
-)
+ "src/gl_debug.cpp")
 
 if(MSVC)
 	target_compile_options(later-darker PRIVATE "/utf-8")

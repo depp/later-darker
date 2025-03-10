@@ -4,6 +4,7 @@
 #include "main.hpp"
 
 #include "gl.hpp"
+#include "gl_debug.hpp"
 #include "gl_shader.hpp"
 #include "log.hpp"
 #include "scene_triangle.hpp"
@@ -95,6 +96,9 @@ void Main() {
 
 	glfwMakeContextCurrent(window);
 	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
+	if (var::DebugContext) {
+		gl_debug::Init();
+	}
 	gl_shader::Init();
 	scene::Triangle scene;
 	scene.Init();
