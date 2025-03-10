@@ -30,6 +30,10 @@ constexpr std::size_t LogBufferSize = 256;
 
 HANDLE ConsoleHandle;
 
+bool LogAvailable() {
+	return ConsoleHandle != nullptr;
+}
+
 struct LevelInfo {
 	std::string_view color;
 	std::string_view name;
@@ -44,11 +48,7 @@ const LevelInfo Levels[] = {
 };
 
 const LevelInfo &GetLevelInfo(Level level) {
-	int index = static_cast<int>(level);
-	if (index < 0 || std::size(Levels) <= index) {
-		std::abort();
-	}
-	return Levels[index];
+	return Levels[static_cast<int>(level)];
 }
 
 void AppendFileName(TextBuffer &out, std::string_view file) {
@@ -97,6 +97,10 @@ struct LogBuffer {
 void LogBuffer::Log(Level level, const Location &location,
                     std::string_view message,
                     std::span<const Attr> attributes) {
+	if (!LogAvailable()) {
+		return;
+	}
+
 	// Create the log message in UTF-8.
 	const LevelInfo &levelInfo = GetLevelInfo(level);
 	buffer.Clear();
@@ -139,6 +143,7 @@ void LogBuffer::Log(Level level, const Location &location,
 	buffer.AppendChar('\n');
 
 	// Convert to wide characters.
+	wideBuffer.Clear();
 	wideBuffer.AppendMultiByte(buffer.Contents());
 	// FIXME: overflow check?
 	DWORD size = static_cast<DWORD>(wideBuffer.Size());
@@ -175,7 +180,7 @@ void Log(Level level, const Location &location, std::string_view message) {
 
 void Log(Level level, const Location &location, std::string_view message,
          std::initializer_list<Attr> attributes) {
-	if (ConsoleHandle == nullptr) {
+	if (!LogAvailable()) {
 		return;
 	}
 
