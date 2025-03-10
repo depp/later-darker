@@ -207,18 +207,49 @@ inline void Attr::AddToRecord(Record &record) const {
 		__FILE__, __LINE__, __func__ \
 	}
 
-// Write a message to the log.
+/// <summary>
+/// Write a message to the log. Takes a message and an optional list of
+/// attributes, such as <see cref="log::demo::Attr"/>.
+/// </summary>
+/// <example>
+/// Log a debug message with the attribute <c>x=5</c>.
+/// <code>
+/// int x = 5;
+/// LOG(Info, "Message.", Attr("x", x));
+/// </code>
+/// </example>
 #define LOG(level, ...) \
 	::demo::log::Record{::demo::log::Level::level, LOG_LOCATION, __VA_ARGS__} \
 		.Log()
 
-// Check that a condition is true. If not, show an error message and exit the
-// program.
+/// <summary>
+/// Check that a condition is true. If not, show an error message and exit the
+/// program. Attributes can be added to the message, as with <see cref="LOG"/>.
+/// This behaves like assert().
+/// </summary>
+/// <example>
+/// Check that <c>ptr</c> is not null.
+/// <code>
+/// void *ptr = SomeFunction();
+/// CHECK(ptr != nullptr);
+/// </code>
+/// </example>
 #define CHECK(condition) \
 	(void)((!!(condition)) || \
-	       (::demo::log::Record::CheckFailure(LOG_LOCATION, #condition), 0))
+	       (::demo::log::Record::CheckFailure(LOG_LOCATION, #condition) \
+	            .Fail(), \
+	        0))
 
-// Show an error message and exit the program.
+/// <summary>
+/// Show an error message and exit the program.
+/// </summary>
+/// <example>
+/// Exit the program with a message about a missing file.
+/// <code>
+/// std::string filename = "my_file.txt";
+/// FAIL("File is missing.", Attr("filename", filename));
+/// </code>
+/// </example>
 #define FAIL(...) \
 	::demo::log::Record{::demo::log::Level::Error, LOG_LOCATION, __VA_ARGS__} \
 		.Fail()
