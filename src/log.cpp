@@ -51,6 +51,20 @@ const LevelInfo &GetLevelInfo(Level level) {
 	return Levels[static_cast<int>(level)];
 }
 
+// Return true if the string should be quoted when logged.
+bool DoesNeedQuotes(std::string_view str) {
+	if (str.empty()) {
+		return true;
+	}
+	for (auto p = str.begin(), e = str.end(); p != e; ++p) {
+		const unsigned ch = static_cast<unsigned char>(*p);
+		if (ch < 33 || 127 < ch || ch == '"' || ch == '\\') {
+			return true;
+		}
+	}
+	return false;
+}
+
 void AppendFileName(TextBuffer &out, std::string_view file) {
 	// NOTE: We rely on this file being named ${prefix}src/log.cpp so we can
 	// figure out what the prefix is for other files.
@@ -136,7 +150,11 @@ void LogBuffer::Log(Level level, const Location &location,
 			break;
 		case Kind::String: {
 			std::string_view str = value.StringValue();
-			buffer.Append(str);
+			if (DoesNeedQuotes(str)) {
+				buffer.AppendQuoted(str);
+			} else {
+				buffer.Append(str);
+			}
 		} break;
 		}
 	}

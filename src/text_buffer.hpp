@@ -73,6 +73,12 @@ public:
 		Append(view.data(), view.size());
 	}
 
+	// Append a string, enclosed in quotes, with characters escaped.
+	void AppendQuoted(std::string_view str);
+
+	// Append a string with the characters escaped as necessary.
+	void AppendEscaped(std::string_view str);
+
 	// Append a number.
 	void AppendNumber(long long value);
 	// Append a number.
