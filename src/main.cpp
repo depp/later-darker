@@ -33,8 +33,8 @@ extern "C" void ErrorCallback(int error, const char *description) {
 void Main() {
 	log::Init();
 	LOG(Info, "Opened console");
-	LOG(Debug,
-	    "A debug message; Unicode: \xce\xb1\xce\xb2"); // alpha, beta
+	// Aristophanes, Birds 1436
+	LOG(Debug, "νῦν τοι λέγων πτερῶ σε.", {{"speaker", "Πισθέταιρος"}});
 	LOG(Warn, "A warning");
 	LOG(Error, "An error message");
 	LOG(Info, "Has attributes",

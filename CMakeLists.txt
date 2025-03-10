@@ -29,6 +29,7 @@ add_executable(later-darker WIN32
 )
 
 if(MSVC)
+	target_compile_options(later-darker PRIVATE "/utf-8")
 	target_compile_options(later-darker PRIVATE /W4)
 else()
 	target_compile_options(later-darker PRIVATE -Wall -Wextra)
