@@ -140,6 +140,9 @@ void Log(Level level, const Location &location, std::string_view message);
 void Log(Level level, const Location &location, std::string_view message,
          std::initializer_list<Attr> attributes);
 
+[[noreturn]]
+void CheckFail(const Location &location, std::string_view condition);
+
 } // namespace log
 } // namespace demo
 
@@ -148,5 +151,12 @@ void Log(Level level, const Location &location, std::string_view message,
 		__FILE__, __LINE__, __func__ \
 	}
 
+// Write a message to the log.
 #define LOG(level, ...) \
 	::demo::log::Log(::demo::log::Level::level, LOG_LOCATION, __VA_ARGS__)
+
+// Check that a condition is true. If not, show an error message and exit the
+// program.
+#define CHECK(condition) \
+	(void)((!!(condition)) || \
+	       (::demo::log::CheckFail(LOG_LOCATION, #condition), 0))

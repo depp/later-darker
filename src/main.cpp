@@ -10,6 +10,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include <cassert>
 #include <cstdio>
 
 #define UNICODE 1
@@ -38,6 +39,7 @@ void Main() {
 	LOG(Error, "An error message");
 	LOG(Info, "Has attributes",
 	    {{"x", -127}, {"y", true}, {"float", 123.9}, {"string", "abc"}});
+	CHECK(7 == 12);
 
 	glfwSetErrorCallback(ErrorCallback);
 	if (!glfwInit()) {

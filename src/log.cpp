@@ -7,8 +7,10 @@
 #include "var.hpp"
 #include "wide_text_buffer.hpp"
 
+#include <array>
 #include <charconv>
 #include <limits>
+#include <span>
 #include <string>
 
 // Note:
@@ -70,6 +72,80 @@ void AppendFileName(TextBuffer &out, std::string_view file) {
 	}
 }
 
+void AppendLocation(TextBuffer &out, const Location &location) {
+	AppendFileName(out, location.file);
+	out.AppendChar(':');
+	out.AppendNumber(location.line);
+	out.Append(" (");
+	out.Append(location.function);
+	out.AppendChar(')');
+}
+
+struct LogBuffer {
+	TextBuffer buffer{bufferData};
+	WideTextBuffer wideBuffer{wideBufferData};
+	char bufferData[LogBufferSize];
+	wchar_t wideBufferData[LogBufferSize];
+
+	LogBuffer() : buffer{bufferData}, wideBuffer{wideBufferData} {}
+
+	// Format a log message and write it to the console.
+	void Log(Level level, const Location &location, std::string_view message,
+	         std::span<const Attr> attributes);
+};
+
+void LogBuffer::Log(Level level, const Location &location,
+                    std::string_view message,
+                    std::span<const Attr> attributes) {
+	// Create the log message in UTF-8.
+	const LevelInfo &levelInfo = GetLevelInfo(level);
+	buffer.Clear();
+	buffer.Append(levelInfo.color);
+	buffer.Append(levelInfo.name);
+	if (!levelInfo.color.empty()) {
+		buffer.Append("\x1b[0m");
+	}
+	buffer.AppendChar(' ');
+	AppendLocation(buffer, location);
+	buffer.Append(": ");
+	buffer.Append(message);
+	for (const Attr &attr : attributes) {
+		buffer.AppendChar(' ');
+		buffer.Append(attr.name());
+		buffer.AppendChar('=');
+		const Value &value = attr.value();
+		switch (value.ValueKind()) {
+		case Kind::Null:
+			buffer.Append("(null)");
+			break;
+		case Kind::Int:
+			buffer.AppendNumber(value.IntValue());
+			break;
+		case Kind::Uint:
+			buffer.AppendNumber(value.UintValue());
+			break;
+		case Kind::Float:
+			buffer.AppendNumber(value.FloatValue());
+			break;
+		case Kind::Bool:
+			buffer.AppendBool(value.BoolValue());
+			break;
+		case Kind::String: {
+			std::string_view str = value.StringValue();
+			buffer.Append(str);
+		} break;
+		}
+	}
+	buffer.AppendChar('\n');
+
+	// Convert to wide characters.
+	wideBuffer.AppendMultiByte(buffer.Contents());
+	// FIXME: overflow check?
+	DWORD size = static_cast<DWORD>(wideBuffer.Size());
+	DWORD written;
+	WriteConsoleW(ConsoleHandle, wideBuffer.Start(), size, &written, nullptr);
+}
+
 } // namespace
 
 void Init() {
@@ -103,60 +179,27 @@ void Log(Level level, const Location &location, std::string_view message,
 		return;
 	}
 
-	// Create the log message in UTF-8.
-	const LevelInfo &levelInfo = GetLevelInfo(level);
-	char bufferData[LogBufferSize];
-	TextBuffer buffer(bufferData);
-	buffer.Append(levelInfo.color);
-	buffer.Append(levelInfo.name);
-	if (!levelInfo.color.empty()) {
-		buffer.Append("\x1b[0m");
-	}
-	buffer.AppendChar(' ');
-	AppendFileName(buffer, location.file);
-	buffer.AppendChar(':');
-	buffer.AppendNumber(location.line);
-	buffer.Append(" (");
-	buffer.Append(location.function);
-	buffer.Append("): ");
-	buffer.Append(message);
-	for (const Attr &attr : attributes) {
-		buffer.AppendChar(' ');
-		buffer.Append(attr.name());
-		buffer.AppendChar('=');
-		const Value &value = attr.value();
-		switch (value.ValueKind()) {
-		case Kind::Null:
-			buffer.Append("(null)");
-			break;
-		case Kind::Int:
-			buffer.AppendNumber(value.IntValue());
-			break;
-		case Kind::Uint:
-			buffer.AppendNumber(value.UintValue());
-			break;
-		case Kind::Float:
-			buffer.AppendNumber(value.FloatValue());
-			break;
-		case Kind::Bool:
-			buffer.AppendBool(value.BoolValue());
-			break;
-		case Kind::String: {
-			std::string_view str = value.StringValue();
-			buffer.Append(str);
-		} break;
-		}
-	}
-	buffer.AppendChar('\n');
+	LogBuffer buffer;
+	buffer.Log(level, location, message, attributes);
+}
 
-	// Convert to wchar.
-	wchar_t wideBufferData[LogBufferSize];
-	WideTextBuffer wideBuffer(wideBufferData);
-	wideBuffer.AppendMultiByte(buffer.Contents());
-	// FIXME: overflow check?
-	DWORD size = static_cast<DWORD>(wideBuffer.Size());
-	DWORD written;
-	WriteConsoleW(ConsoleHandle, wideBuffer.Start(), size, &written, nullptr);
+[[noreturn]]
+void CheckFail(const Location &location, std::string_view condition) {
+	LogBuffer buffer;
+	buffer.Log(Level::Error, location, "Check failed.",
+	           std::initializer_list<Attr>{{"condition", condition}});
+
+	buffer.buffer.Clear();
+	buffer.buffer.Append("Check failed.\nCondition: ");
+	buffer.buffer.Append(condition);
+	buffer.buffer.Append("\nLocation: ");
+	AppendLocation(buffer.buffer, location);
+	buffer.buffer.AppendChar('\0');
+	buffer.wideBuffer.Clear();
+	buffer.wideBuffer.AppendMultiByte(buffer.buffer.Contents());
+
+	MessageBoxW(nullptr, buffer.wideBuffer.Start(), nullptr, MB_ICONSTOP);
+	ExitProcess(1);
 }
 
 } // namespace log
