@@ -92,9 +92,8 @@ void ParseCommandArguments(int argCount, os_char **args) {
 		const VarDefinition *definition = LookupVar(name);
 		if (definition == nullptr) {
 			// FIXME: Show full arg.
-			// FIXME: Better overloads for Attr.
 			FAIL("Command-line contains a value for an unknown variable.",
-			     log::Attr{"name", std::string_view(name)});
+			     log::Attr{"name", name});
 		}
 		std::string valueStr = ToString(arg.substr(pos + 1));
 		bool value = ParseBool(valueStr);

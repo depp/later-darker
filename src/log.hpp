@@ -55,6 +55,7 @@ private:
 	};
 
 public:
+	// Scalars.
 	constexpr Value() : mKind{Kind::Null} {}
 	constexpr Value(std::nullptr_t) : mKind{Kind::Null} {}
 	constexpr Value(int value) : mKind{Kind::Int} { mData.intValue = value; }
@@ -75,13 +76,24 @@ public:
 		mData.floatValue = value;
 	}
 	constexpr Value(bool value) : mKind{Kind::Bool} { mData.boolValue = value; }
-	constexpr Value(std::string_view value) : mKind{Kind::String} {
-		mData.stringValue = value;
-	}
+
+	// Strings.
 	constexpr Value(const char *value) : mKind{Kind::String} {
 		mData.stringValue = std::string_view{value};
 	}
+	template <
+		typename SV,
+		std::enable_if_t<
+			std::conjunction_v<
+				std::is_convertible<const SV &, std::basic_string_view<char>>,
+				std::negation<std::is_convertible<const SV &, const char *>>>,
+			bool> = true>
+	constexpr Value(const SV &value) : mKind{Kind::String} {
+		std::string_view view = value;
+		mData.stringValue = view;
+	}
 
+	// Getters.
 	Kind ValueKind() const { return mKind; }
 	long long IntValue() const {
 		return mKind == Kind::Int ? mData.intValue : 0ll;
