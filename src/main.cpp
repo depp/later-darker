@@ -1,6 +1,8 @@
 // Copyright 2025 Dietrich Epp <depp@zdome.net>
 // Licensed under the Mozilla Public License Version 2.0.
 // SPDX-License-Identifier: MPL-2.0
+#include "main.hpp"
+
 #include "gl.hpp"
 #include "gl_shader.hpp"
 #include "log.hpp"
@@ -10,6 +12,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include <array>
 #include <cassert>
 #include <cstdio>
 
@@ -17,6 +20,8 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 #include <shellapi.h>
+
+#define FAIL_GLFW(message) FailGLFW(LOG_LOCATION, message)
 
 namespace demo {
 namespace {
@@ -27,12 +32,26 @@ extern "C" void ErrorCallback(int error, const char *description) {
 	         {{"description", description}});
 }
 
+[[noreturn]]
+void FailGLFW(const log::Location &location, std::string_view message) {
+	const char *description;
+	int code = glfwGetError(&description);
+	std::span<const log::Attr> attributes;
+	std::array<log::Attr, 2> attributeData;
+	if (description != nullptr) {
+		attributeData[1] = {"code", code};
+		attributeData[0] = {"description", description};
+		attributes = attributeData;
+	}
+	Fail(location, message, attributes);
+}
+
 void Main() {
 	log::Init();
 
 	glfwSetErrorCallback(ErrorCallback);
 	if (!glfwInit()) {
-		std::exit(1);
+		FAIL_GLFW("Could not initialize GLFW.");
 	}
 
 	// All of these are necessary.
@@ -61,8 +80,7 @@ void Main() {
 	GLFWwindow *window =
 		glfwCreateWindow(640, 480, "Later, Darker", nullptr, nullptr);
 	if (window == nullptr) {
-		glfwTerminate();
-		exit(1);
+		FAIL_GLFW("Could not create window.");
 	}
 
 	glfwMakeContextCurrent(window);
@@ -109,6 +127,12 @@ void ParseCommandLine(const wchar_t *cmdLine) {
 }
 
 } // namespace
+
+[[noreturn]]
+void ExitError() {
+	glfwTerminate();
+	ExitProcess(1);
+}
 
 } // namespace demo
 

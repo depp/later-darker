@@ -114,6 +114,7 @@ private:
 // A key-value pair that can be part of a log message.
 class Attr {
 public:
+	constexpr Attr() = default;
 	constexpr Attr(std::string_view name, Value value)
 		: mName{name}, mValue{value} {}
 
@@ -142,12 +143,15 @@ struct Location {
 // Write a message to the log.
 void Log(Level level, const Location &location, std::string_view message);
 
+// Write a message to the log.
 void Log(Level level, const Location &location, std::string_view message,
          std::initializer_list<Attr> attributes);
 
+// Shows an error message for a CHECK() failure and exits the program.
 [[noreturn]]
 void CheckFail(const Location &location, std::string_view condition);
 
+// Shows an error message and exits the program.
 [[noreturn]]
 void Fail(const Location &location, std::string_view message,
           std::span<const Attr> attributes);

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "log.hpp"
 
+#include "main.hpp"
 #include "text_buffer.hpp"
 #include "var.hpp"
 #include "wide_text_buffer.hpp"
@@ -264,7 +265,7 @@ void Fail(const Location &location, std::string_view message,
 	buffer.wideBuffer.Clear();
 	buffer.wideBuffer.AppendMultiByte(buffer.buffer.Contents());
 	MessageBoxW(nullptr, buffer.wideBuffer.Start(), nullptr, MB_ICONSTOP);
-	ExitProcess(1);
+	ExitError();
 }
 
 [[noreturn]]
