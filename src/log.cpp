@@ -214,17 +214,20 @@ void Init() {
 	}
 	BOOL ok = AllocConsole();
 	if (!ok) {
-		std::abort();
+		// FIXME: Error
+		FAIL("Failed to create console.");
 	}
 	HANDLE console = CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_WRITE,
 	                             nullptr, OPEN_EXISTING, 0, nullptr);
 	if (console == INVALID_HANDLE_VALUE) {
-		std::abort();
+		// FIXME: Error.
+		FAIL("Failed to open console.");
 	}
 	ok = SetConsoleMode(
 		console, ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 	if (!ok) {
-		std::abort();
+		// FIXME: Error.
+		FAIL("Failed to set console mode.");
 	}
 	ConsoleHandle = console;
 }

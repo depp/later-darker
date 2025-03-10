@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "gl_shader.hpp"
 
+#include "log.hpp"
+
 #include <cstdio>
 #include <limits>
 #include <string_view>
@@ -30,12 +32,10 @@ constexpr std::string_view Fragment{
 GLuint CompileShader(GLenum shaderType, std::string_view source) {
 	GLuint shader = glCreateShader(shaderType);
 	if (shader == 0) {
-		std::abort();
+		FAIL("Could not create shader.");
 	}
 
-	if (source.size() > std::numeric_limits<GLint>::max()) {
-		std::abort();
-	}
+	CHECK(source.size() <= std::numeric_limits<GLint>::max());
 	const char *srcText[1] = {source.data()};
 	const GLint srcLen[1] = {static_cast<GLint>(source.size())};
 	glShaderSource(shader, 1, srcText, srcLen);
@@ -43,7 +43,7 @@ GLuint CompileShader(GLenum shaderType, std::string_view source) {
 	GLint status;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
 	if (!status) {
-		std::abort();
+		FAIL("Shader failed to compile.");
 	}
 	return shader;
 }
@@ -51,7 +51,7 @@ GLuint CompileShader(GLenum shaderType, std::string_view source) {
 GLuint LinkProgram(GLuint vertex, GLuint fragment) {
 	GLuint program = glCreateProgram();
 	if (program == 0) {
-		std::abort();
+		FAIL("Could not create shader program.");
 	}
 
 	glAttachShader(program, vertex);
@@ -62,7 +62,7 @@ GLuint LinkProgram(GLuint vertex, GLuint fragment) {
 	GLint status;
 	glGetProgramiv(program, GL_LINK_STATUS, &status);
 	if (!status) {
-		std::abort();
+		FAIL("Shader program failed to link.");
 	}
 	return program;
 }

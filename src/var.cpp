@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "var.hpp"
 
+#include "log.hpp"
+
 namespace demo {
 
 namespace var {
@@ -71,7 +73,8 @@ bool ParseBool(std::string_view value) {
 	    value == "true") {
 		return true;
 	}
-	std::abort();
+	// FIXME: real error handling.
+	FAIL("Invalid boolean.");
 }
 
 } // namespace
@@ -82,12 +85,16 @@ void ParseCommandArguments(int argCount, os_char **args) {
 		os_string_view arg = iter.Next();
 		std::size_t pos = arg.find('=');
 		if (pos == os_string_view::npos) {
-			std::abort();
+			// FIXME: show arg.
+			FAIL("Invalid command-line argument syntax.");
 		}
 		std::string name = ToString(arg.substr(0, pos));
 		const VarDefinition *definition = LookupVar(name);
 		if (definition == nullptr) {
-			std::abort();
+			// FIXME: Show full arg.
+			// FIXME: Better overloads for Attr.
+			FAIL("Command-line contains a value for an unknown variable.",
+			     log::Attr{"name", std::string_view(name)});
 		}
 		std::string valueStr = ToString(arg.substr(pos + 1));
 		bool value = ParseBool(valueStr);

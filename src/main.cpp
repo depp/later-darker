@@ -134,7 +134,8 @@ void ParseCommandLine(const wchar_t *cmdLine) {
 	int nArgs;
 	wchar_t **args = CommandLineToArgvW(cmdLine, &nArgs);
 	if (args == nullptr) {
-		std::abort();
+		// FIXME: Error
+		FAIL("Could not parse command line.");
 	}
 	ParseCommandArguments(nArgs, args);
 	LocalFree(args);

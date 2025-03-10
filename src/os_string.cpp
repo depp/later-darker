@@ -4,6 +4,8 @@
 #pragma once
 #include "os_string.hpp"
 
+#include "log.hpp"
+
 #include <cstdio>
 #include <limits>
 
@@ -18,9 +20,8 @@ void Append(std::string *dest, os_string_view value) {
 	if (value.empty()) {
 		return;
 	}
-	if (value.size() > std::numeric_limits<int>::max()) {
-		std::abort();
-	}
+	// FIXME: This isn't recursive, right?
+	CHECK(value.size() <= std::numeric_limits<int>::max());
 	int nWideChars = static_cast<int>(value.size());
 	int nChars = WideCharToMultiByte(CP_UTF8, 0, value.data(), nWideChars,
 	                                 nullptr, 0, nullptr, nullptr);
@@ -34,9 +35,8 @@ void Append(os_string *dest, std::string_view value) {
 	if (value.empty()) {
 		return;
 	}
-	if (value.size() > std::numeric_limits<int>::max()) {
-		std::abort();
-	}
+	// FIXME: Recursive?
+	CHECK(value.size() <= std::numeric_limits<int>::max());
 	int nChars = static_cast<int>(value.size());
 	int nWideChars =
 		MultiByteToWideChar(CP_UTF8, 0, value.data(), nChars, nullptr, 0);
