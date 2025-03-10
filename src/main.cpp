@@ -6,15 +6,10 @@
 #include "gl.hpp"
 #include "gl_shader.hpp"
 #include "log.hpp"
-#include "os_string.hpp"
 #include "scene_triangle.hpp"
 #include "var.hpp"
 
 #include <GLFW/glfw3.h>
-
-#include <array>
-#include <cassert>
-#include <cstdio>
 
 #define UNICODE 1
 #define WIN32_LEAN_AND_MEAN 1
