@@ -8,7 +8,8 @@
 namespace demo {
 namespace util {
 
-// Return the next larger size for a dynamic array.
+// Return the next larger size for a dynamic array. Guaranteed that
+// (GrowSize(x)-x) is monotonic.
 constexpr std::size_t GrowSize(std::size_t size) {
 	// Same as Git's alloc_nr.
 	return (size + 16) * 3 / 2;

@@ -149,10 +149,6 @@ private:
 	// Reallocate the buffer, with the given new capacity.
 	void Reallocate(std::size_t newCapacity);
 
-	void AppendHexEscape8(unsigned ch);
-	void AppendHexEscape16(unsigned ch);
-	void AppendHexEscape32(unsigned ch);
-
 	char *mStart;
 	char *mPos;
 	char *mEnd;

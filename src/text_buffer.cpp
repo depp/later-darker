@@ -60,11 +60,49 @@ const unsigned char Escape[128] = {
 const char HexDigit[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                            '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
+char *AppendHexEscape8(char *ptr, unsigned ch) {
+	ptr[0] = '\\';
+	ptr[1] = 'x';
+	ptr[2] = HexDigit[ch >> 4];
+	ptr[3] = HexDigit[ch & 15];
+	return ptr + 4;
+}
+
+char *AppendHexEscape16(char *ptr, unsigned ch) {
+	ptr[0] = '\\';
+	ptr[1] = 'u';
+	ptr[2] = HexDigit[ch >> 12];
+	ptr[3] = HexDigit[(ch >> 8) & 15];
+	ptr[4] = HexDigit[(ch >> 4) & 15];
+	ptr[5] = HexDigit[ch & 15];
+	return ptr + 6;
+}
+
+char *AppendHexEscape32(char *ptr, unsigned ch) {
+	ptr[0] = '\\';
+	ptr[1] = 'U';
+	ptr[2] = '0';
+	ptr[3] = '0';
+	ptr[4] = HexDigit[ch >> 20];
+	ptr[5] = HexDigit[(ch >> 16) & 15];
+	ptr[6] = HexDigit[(ch >> 12) & 15];
+	ptr[7] = HexDigit[(ch >> 8) & 15];
+	ptr[8] = HexDigit[(ch >> 4) & 15];
+	ptr[9] = HexDigit[ch & 15];
+	return ptr + 10;
+}
+
 } // namespace
 
 void TextBuffer::AppendEscaped(std::string_view str) {
+	constexpr std::size_t MinSpace = 10;
+	static_assert(util::GrowSize(0) >= MinSpace, "Wrong growth curve.");
+
 	const char *p = str.data(), *e = p + str.size();
 	while (p != e) {
+		if (mEnd - mPos < MinSpace) {
+			Grow();
+		}
 		unsigned ch = static_cast<unsigned char>(*p++);
 		unsigned ch1, ch2, ch3, uch, escape;
 
@@ -76,7 +114,6 @@ void TextBuffer::AppendEscaped(std::string_view str) {
 			} else if (escape == 'x') {
 				goto hexEscape;
 			} else {
-				Reserve(2);
 				mPos[0] = '\\';
 				mPos[1] = static_cast<char>(escape);
 				mPos += 2;
@@ -132,35 +169,36 @@ void TextBuffer::AppendEscaped(std::string_view str) {
 				goto hexEscape;
 			}
 			p += 3;
-			AppendHexEscape32(uch);
+			mPos = AppendHexEscape32(mPos, uch);
 			continue;
 		}
 
 	hexEscape:
-		AppendHexEscape8(ch);
+		mPos = AppendHexEscape8(mPos, ch);
 		continue;
 
 	unicodeEscapeShort:
-		AppendHexEscape16(uch);
+		mPos = AppendHexEscape16(mPos, uch);
 	}
 }
 
 void TextBuffer::AppendWide(std::wstring_view value) {
+	constexpr std::size_t MinSpace = 4;
+	static_assert(util::GrowSize(0) >= MinSpace, "Wrong growth curve.");
+
 	const wchar_t *ptr = value.data(), *end = ptr + value.size();
 	while (ptr != end) {
+		if (mEnd - mPos < MinSpace) {
+			Grow();
+		}
 		unsigned ch = static_cast<unsigned short>(*ptr++);
 		if (ch < 0x80) {
-			if (mPos == mEnd) {
-				Grow();
-			}
 			*mPos++ = static_cast<char>(ch);
 		} else if (ch < 0x800) {
-			Reserve(2);
 			mPos[0] = static_cast<char>(0xc0u | (ch >> 6));
 			mPos[1] = static_cast<char>(0x80u | (ch & 0x3fu));
 			mPos += 2;
 		} else if (ch < 0xd800 || 0xe000 <= ch) {
-			Reserve(3);
 			mPos[0] = static_cast<char>(0xe0u | (ch >> 12));
 			mPos[1] = static_cast<char>(0x80u | ((ch >> 6) & 0x3fu));
 			mPos[2] = static_cast<char>(0x80u | (ch & 0x3fu));
@@ -177,7 +215,6 @@ void TextBuffer::AppendWide(std::wstring_view value) {
 			}
 			ptr++;
 			ch = (ch << 10) + ch2 - off;
-			Reserve(4);
 			mPos[0] = static_cast<char>(0xf0u | (ch >> 18));
 			mPos[1] = static_cast<char>(0x80u | ((ch >> 12) & 0x3fu));
 			mPos[2] = static_cast<char>(0x80u | ((ch >> 6) & 0x3fu));
@@ -186,7 +223,6 @@ void TextBuffer::AppendWide(std::wstring_view value) {
 			continue;
 
 		replacement:
-			Reserve(3);
 			mPos[0] = static_cast<char>(0xef);
 			mPos[1] = static_cast<char>(0xbf);
 			mPos[2] = static_cast<char>(0xbd);
@@ -270,41 +306,6 @@ void TextBuffer::Reallocate(std::size_t newCapacity) {
 	mPos = ptr + offset;
 	mEnd = ptr + newCapacity;
 	mIsDynamic = true;
-}
-
-void TextBuffer::AppendHexEscape8(unsigned ch) {
-	Reserve(4);
-	mPos[0] = '\\';
-	mPos[1] = 'x';
-	mPos[2] = HexDigit[ch >> 4];
-	mPos[3] = HexDigit[ch & 15];
-	mPos += 4;
-}
-
-void TextBuffer::AppendHexEscape16(unsigned ch) {
-	Reserve(6);
-	mPos[0] = '\\';
-	mPos[1] = 'u';
-	mPos[2] = HexDigit[ch >> 12];
-	mPos[3] = HexDigit[(ch >> 8) & 15];
-	mPos[4] = HexDigit[(ch >> 4) & 15];
-	mPos[5] = HexDigit[ch & 15];
-	mPos += 6;
-}
-
-void TextBuffer::AppendHexEscape32(unsigned ch) {
-	Reserve(10);
-	mPos[0] = '\\';
-	mPos[1] = 'U';
-	mPos[2] = '0';
-	mPos[3] = '0';
-	mPos[4] = HexDigit[ch >> 20];
-	mPos[5] = HexDigit[(ch >> 16) & 15];
-	mPos[6] = HexDigit[(ch >> 12) & 15];
-	mPos[7] = HexDigit[(ch >> 8) & 15];
-	mPos[8] = HexDigit[(ch >> 4) & 15];
-	mPos[9] = HexDigit[ch & 15];
-	mPos += 10;
 }
 
 } // namespace demo
