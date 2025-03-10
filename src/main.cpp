@@ -23,23 +23,12 @@ namespace {
 
 extern "C" void ErrorCallback(int error, const char *description) {
 	(void)error;
-	std::string message;
-	message.append("GLFW error: ");
-	message.append(description);
-	std::wstring wmessage = ToOSString(message);
-	MessageBoxW(nullptr, wmessage.c_str(), nullptr, MB_ICONSTOP);
+	log::Log(log::Level::Error, log::Location{}, "GLFW error.",
+	         {{"description", description}});
 }
 
 void Main() {
 	log::Init();
-	LOG(Info, "Opened console");
-	// Aristophanes, Birds 1436
-	LOG(Debug, "νῦν τοι λέγων πτερῶ σε.", {{"speaker", "Πισθέταιρος"}});
-	LOG(Warn, "A warning");
-	LOG(Error, "An error message");
-	LOG(Info, "Has attributes",
-	    {{"x", -127}, {"y", true}, {"float", 123.9}, {"string", "abc"}});
-	CHECK(7 == 12);
 
 	glfwSetErrorCallback(ErrorCallback);
 	if (!glfwInit()) {

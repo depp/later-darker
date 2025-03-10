@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <initializer_list>
+#include <span>
 #include <string_view>
 
 namespace demo {
@@ -132,6 +133,8 @@ struct Location {
 	std::string_view file;
 	int line;
 	std::string_view function;
+
+	bool IsEmpty() const { return file.empty(); }
 };
 
 // Write a message to the log.
@@ -142,6 +145,10 @@ void Log(Level level, const Location &location, std::string_view message,
 
 [[noreturn]]
 void CheckFail(const Location &location, std::string_view condition);
+
+[[noreturn]]
+void Fail(const Location &location, std::string_view message,
+          std::span<const Attr> attributes);
 
 } // namespace log
 } // namespace demo

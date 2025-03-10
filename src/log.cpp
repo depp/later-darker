@@ -26,6 +26,12 @@ namespace log {
 
 namespace {
 
+// Format for quoting a string.
+enum class Context {
+	Inline, // String appears inline, with other content.
+	Line,   // String appears on its own line.
+};
+
 constexpr std::size_t LogBufferSize = 256;
 
 HANDLE ConsoleHandle;
@@ -52,13 +58,25 @@ const LevelInfo &GetLevelInfo(Level level) {
 }
 
 // Return true if the string should be quoted when logged.
-bool DoesNeedQuotes(std::string_view str) {
+bool DoesNeedQuotes(std::string_view str, Context context) {
 	if (str.empty()) {
 		return true;
 	}
+	unsigned minCh;
+	switch (context) {
+	case Context::Inline:
+		minCh = 33;
+		break;
+	case Context::Line:
+		minCh = 32;
+		if (str[0] == ' ' || *(str.end() - 1) == ' ') {
+			return true;
+		}
+		break;
+	}
 	for (auto p = str.begin(), e = str.end(); p != e; ++p) {
 		const unsigned ch = static_cast<unsigned char>(*p);
-		if (ch < 33 || 127 < ch || ch == '"' || ch == '\\') {
+		if (ch < minCh || 127 < ch || ch == '"' || ch == '\\') {
 			return true;
 		}
 	}
@@ -95,6 +113,34 @@ void AppendLocation(TextBuffer &out, const Location &location) {
 	out.AppendChar(')');
 }
 
+void AppendValue(TextBuffer &out, const Value &value, Context context) {
+	switch (value.ValueKind()) {
+	case Kind::Null:
+		out.Append("(null)");
+		break;
+	case Kind::Int:
+		out.AppendNumber(value.IntValue());
+		break;
+	case Kind::Uint:
+		out.AppendNumber(value.UintValue());
+		break;
+	case Kind::Float:
+		out.AppendNumber(value.FloatValue());
+		break;
+	case Kind::Bool:
+		out.AppendBool(value.BoolValue());
+		break;
+	case Kind::String: {
+		std::string_view str = value.StringValue();
+		if (DoesNeedQuotes(str, context)) {
+			out.AppendQuoted(str);
+		} else {
+			out.Append(str);
+		}
+	} break;
+	}
+}
+
 struct LogBuffer {
 	TextBuffer buffer{bufferData};
 	WideTextBuffer wideBuffer{wideBufferData};
@@ -106,6 +152,10 @@ struct LogBuffer {
 	// Format a log message and write it to the console.
 	void Log(Level level, const Location &location, std::string_view message,
 	         std::span<const Attr> attributes);
+
+	// Format a message as a multi-line block. Used for dialogs.
+	void LogBlock(const Location &location, std::string_view message,
+	              std::span<const Attr> attributes);
 };
 
 void LogBuffer::Log(Level level, const Location &location,
@@ -124,39 +174,16 @@ void LogBuffer::Log(Level level, const Location &location,
 		buffer.Append("\x1b[0m");
 	}
 	buffer.AppendChar(' ');
-	AppendLocation(buffer, location);
-	buffer.Append(": ");
+	if (!location.IsEmpty()) {
+		AppendLocation(buffer, location);
+		buffer.Append(": ");
+	}
 	buffer.Append(message);
 	for (const Attr &attr : attributes) {
 		buffer.AppendChar(' ');
 		buffer.Append(attr.name());
 		buffer.AppendChar('=');
-		const Value &value = attr.value();
-		switch (value.ValueKind()) {
-		case Kind::Null:
-			buffer.Append("(null)");
-			break;
-		case Kind::Int:
-			buffer.AppendNumber(value.IntValue());
-			break;
-		case Kind::Uint:
-			buffer.AppendNumber(value.UintValue());
-			break;
-		case Kind::Float:
-			buffer.AppendNumber(value.FloatValue());
-			break;
-		case Kind::Bool:
-			buffer.AppendBool(value.BoolValue());
-			break;
-		case Kind::String: {
-			std::string_view str = value.StringValue();
-			if (DoesNeedQuotes(str)) {
-				buffer.AppendQuoted(str);
-			} else {
-				buffer.Append(str);
-			}
-		} break;
-		}
+		AppendValue(buffer, attr.value(), Context::Inline);
 	}
 	buffer.AppendChar('\n');
 
@@ -167,6 +194,23 @@ void LogBuffer::Log(Level level, const Location &location,
 	DWORD size = static_cast<DWORD>(wideBuffer.Size());
 	DWORD written;
 	WriteConsoleW(ConsoleHandle, wideBuffer.Start(), size, &written, nullptr);
+}
+
+void LogBuffer::LogBlock(const Location &location, std::string_view message,
+                         std::span<const Attr> attributes) {
+	buffer.Clear();
+	buffer.Append(message);
+	buffer.AppendChar('\n');
+	for (const Attr &attr : attributes) {
+		buffer.AppendChar('\n');
+		buffer.Append(attr.name());
+		buffer.Append(": ");
+		AppendValue(buffer, attr.value(), Context::Line);
+	}
+	if (!location.IsEmpty()) {
+		buffer.Append("\nlocation: ");
+		AppendLocation(buffer, location);
+	}
 }
 
 } // namespace
@@ -207,22 +251,24 @@ void Log(Level level, const Location &location, std::string_view message,
 }
 
 [[noreturn]]
-void CheckFail(const Location &location, std::string_view condition) {
+void Fail(const Location &location, std::string_view message,
+          std::span<const Attr> attributes) {
 	LogBuffer buffer;
-	buffer.Log(Level::Error, location, "Check failed.",
-	           std::initializer_list<Attr>{{"condition", condition}});
 
-	buffer.buffer.Clear();
-	buffer.buffer.Append("Check failed.\nCondition: ");
-	buffer.buffer.Append(condition);
-	buffer.buffer.Append("\nLocation: ");
-	AppendLocation(buffer.buffer, location);
+	buffer.Log(Level::Error, location, message, attributes);
+
+	buffer.LogBlock(location, message, attributes);
 	buffer.buffer.AppendChar('\0');
 	buffer.wideBuffer.Clear();
 	buffer.wideBuffer.AppendMultiByte(buffer.buffer.Contents());
-
 	MessageBoxW(nullptr, buffer.wideBuffer.Start(), nullptr, MB_ICONSTOP);
 	ExitProcess(1);
+}
+
+[[noreturn]]
+void CheckFail(const Location &location, std::string_view condition) {
+	Fail(location, "Check failed.",
+	     std::array<Attr, 1>({{"condition", condition}}));
 }
 
 } // namespace log
