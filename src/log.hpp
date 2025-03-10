@@ -9,6 +9,8 @@
 #include <initializer_list>
 #include <span>
 #include <string_view>
+#include <type_traits>
+#include <vector>
 
 namespace demo {
 namespace log {
@@ -111,6 +113,13 @@ private:
 
 #pragma warning(pop)
 
+class Record;
+
+template <typename T>
+concept AttributeProvider = requires(const T &t, Record &r) {
+	{ t.AddToRecord(r) };
+};
+
 // A key-value pair that can be part of a log message.
 class Attr {
 public:
@@ -120,6 +129,8 @@ public:
 
 	std::string_view name() const { return mName; }
 	const Value &value() const { return mValue; }
+
+	inline void AddToRecord(Record &record) const;
 
 private:
 	std::string_view mName;
@@ -137,34 +148,56 @@ struct Location {
 
 	static const Location Zero;
 
-	bool IsEmpty() const { return file.empty(); }
+	bool is_empty() const { return file.empty(); }
 };
 
-// A message and attributes wrapped together.
-struct Message {
-	std::string_view message;
-	std::span<const Attr> attributes;
+// A record of a log message.
+class Record {
+public:
+	Record() : mLevel{}, mLocation{}, mMessage{}, mAttributes{} {}
 
-	explicit constexpr Message(std::string_view message)
-		: message{message}, attributes{} {}
-	explicit constexpr Message(std::string_view message,
-	                           std::initializer_list<Attr> attributes)
-		: message{message}, attributes{attributes} {}
-	explicit constexpr Message(std::string_view message,
-	                           std::span<const Attr> attributes)
-		: message{message}, attributes{attributes} {}
+	Record(Level level, Location location, std::string_view message)
+		: mLevel{level}, mLocation{location}, mMessage{message} {}
+
+	Record(Level level, Location location, std::string_view message,
+	       AttributeProvider auto... attrs)
+		: mLevel{level}, mLocation{location}, mMessage{message} {
+		((void)attrs.AddToRecord(*this), ...);
+	}
+
+	static Record CheckFailure(Location location, std::string_view condition,
+	                           std::same_as<Attr> auto... attrs) {
+		return Record(Level::Error, location, "Check failed.",
+		              Attr{"condition", condition}, attrs...);
+	}
+
+	Level level() const { return mLevel; }
+	const Location &location() const { return mLocation; }
+	std::string_view message() const { return mMessage; }
+	std::span<const Attr> attributes() const { return mAttributes; }
+
+	// Add an attribute to the record.
+	void Add(std::string_view name, Value value) {
+		mAttributes.emplace_back(name, value);
+	}
+
+	// Log this message.
+	void Log() const;
+
+	// Show this message and exit the program.
+	[[noreturn]]
+	void Fail() const;
+
+private:
+	Level mLevel;
+	Location mLocation;
+	std::string_view mMessage;
+	std::vector<Attr> mAttributes;
 };
 
-// Write a message to the log.
-void Log(Level level, const Location &location, const Message &message);
-
-// Shows an error message for a CHECK() failure and exits the program.
-[[noreturn]]
-void CheckFail(const Location &location, std::string_view condition);
-
-// Shows an error message and exits the program.
-[[noreturn]]
-void Fail(const Location &location, const Message &message);
+inline void Attr::AddToRecord(Record &record) const {
+	record.Add(mName, mValue);
+}
 
 } // namespace log
 } // namespace demo
@@ -176,11 +209,16 @@ void Fail(const Location &location, const Message &message);
 
 // Write a message to the log.
 #define LOG(level, ...) \
-	::demo::log::Log(::demo::log::Level::level, LOG_LOCATION, \
-	                 ::demo::log::Message{__VA_ARGS__})
+	::demo::log::Record{::demo::log::Level::level, LOG_LOCATION, __VA_ARGS__} \
+		.Log()
 
 // Check that a condition is true. If not, show an error message and exit the
 // program.
 #define CHECK(condition) \
 	(void)((!!(condition)) || \
-	       (::demo::log::CheckFail(LOG_LOCATION, #condition), 0))
+	       (::demo::log::Record::CheckFailure(LOG_LOCATION, #condition), 0))
+
+// Show an error message and exit the program.
+#define FAIL(...) \
+	::demo::log::Record{::demo::log::Level::Error, LOG_LOCATION, __VA_ARGS__} \
+		.Fail()

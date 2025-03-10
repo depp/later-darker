@@ -153,20 +153,19 @@ struct LogBuffer {
 	LogBuffer() : buffer{bufferData}, wideBuffer{wideBufferData} {}
 
 	// Format a log message and write it to the console.
-	void Log(Level level, const Location &location, const Message &message);
+	void Log(const Record &record);
 
 	// Format a message as a multi-line block. Used for dialogs.
-	void LogBlock(const Location &location, const Message &message);
+	void LogBlock(const Record &record);
 };
 
-void LogBuffer::Log(Level level, const Location &location,
-                    const Message &message) {
+void LogBuffer::Log(const Record &record) {
 	if (!LogAvailable()) {
 		return;
 	}
 
 	// Create the log message in UTF-8.
-	const LevelInfo &levelInfo = GetLevelInfo(level);
+	const LevelInfo &levelInfo = GetLevelInfo(record.level());
 	buffer.Clear();
 	buffer.Append(levelInfo.color);
 	buffer.Append(levelInfo.name);
@@ -174,12 +173,12 @@ void LogBuffer::Log(Level level, const Location &location,
 		buffer.Append("\x1b[0m");
 	}
 	buffer.AppendChar(' ');
-	if (!location.IsEmpty()) {
-		AppendLocation(buffer, location);
+	if (!record.location().is_empty()) {
+		AppendLocation(buffer, record.location());
 		buffer.Append(": ");
 	}
-	buffer.Append(message.message);
-	for (const Attr &attr : message.attributes) {
+	buffer.Append(record.message());
+	for (const Attr &attr : record.attributes()) {
 		buffer.AppendChar(' ');
 		buffer.Append(attr.name());
 		buffer.AppendChar('=');
@@ -196,19 +195,19 @@ void LogBuffer::Log(Level level, const Location &location,
 	WriteConsoleW(ConsoleHandle, wideBuffer.Start(), size, &written, nullptr);
 }
 
-void LogBuffer::LogBlock(const Location &location, const Message &message) {
+void LogBuffer::LogBlock(const Record &record) {
 	buffer.Clear();
-	buffer.Append(message.message);
+	buffer.Append(record.message());
 	buffer.AppendChar('\n');
-	for (const Attr &attr : message.attributes) {
+	for (const Attr &attr : record.attributes()) {
 		buffer.AppendChar('\n');
 		buffer.Append(attr.name());
 		buffer.Append(": ");
 		AppendValue(buffer, attr.value(), Context::Line);
 	}
-	if (!location.IsEmpty()) {
+	if (!record.location().is_empty()) {
 		buffer.Append("\nlocation: ");
-		AppendLocation(buffer, location);
+		AppendLocation(buffer, record.location());
 	}
 }
 
@@ -235,32 +234,27 @@ void Init() {
 	ConsoleHandle = console;
 }
 
-void Log(Level level, const Location &location, const Message &message) {
+void Record::Log() const {
 	if (!LogAvailable()) {
 		return;
 	}
 
 	LogBuffer buffer;
-	buffer.Log(level, location, message);
+	buffer.Log(*this);
 }
 
 [[noreturn]]
-void Fail(const Location &location, const Message &message) {
+void Record::Fail() const {
 	LogBuffer buffer;
 
-	buffer.Log(Level::Error, location, message);
+	buffer.Log(*this);
 
-	buffer.LogBlock(location, message);
+	buffer.LogBlock(*this);
 	buffer.buffer.AppendChar('\0');
 	buffer.wideBuffer.Clear();
 	buffer.wideBuffer.AppendMultiByte(buffer.buffer.Contents());
 	MessageBoxW(nullptr, buffer.wideBuffer.Start(), nullptr, MB_ICONSTOP);
 	ExitError();
-}
-
-[[noreturn]]
-void CheckFail(const Location &location, std::string_view condition) {
-	Fail(location, Message{"Check failed.", {{"condition", condition}}});
 }
 
 } // namespace log

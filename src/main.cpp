@@ -21,29 +21,44 @@
 #include <Windows.h>
 #include <shellapi.h>
 
-#define FAIL_GLFW(message) FailGLFW(LOG_LOCATION, message)
+#define FAIL_GLFW(...) FAIL(__VA_ARGS__, GLFWErrorInfo::Get())
 
 namespace demo {
 namespace {
 
-extern "C" void ErrorCallback(int error, const char *description) {
-	log::Log(log::Level::Error, log::Location::Zero,
-	         log::Message{"GLFW error.",
-	                      {{"code", error}, {"description", description}}});
-}
-
-[[noreturn]]
-void FailGLFW(const log::Location &location, std::string_view message) {
-	const char *description;
-	int code = glfwGetError(&description);
-	std::span<const log::Attr> attributes;
-	std::array<log::Attr, 2> attributeData;
-	if (description != nullptr) {
-		attributeData[1] = {"code", code};
-		attributeData[0] = {"description", description};
-		attributes = attributeData;
+// Information about GLFW errors to add to log messages.
+class GLFWErrorInfo {
+public:
+	static GLFWErrorInfo Get() {
+		const char *description;
+		int error = glfwGetError(&description);
+		if (error == 0) {
+			return GLFWErrorInfo{};
+		}
+		return GLFWErrorInfo{error, description};
 	}
-	Fail(location, log::Message{message, attributes});
+
+	GLFWErrorInfo() : mError{0}, mDescription{} {}
+	GLFWErrorInfo(int error, const char *description)
+		: mError{error}, mDescription{description} {}
+
+	void AddToRecord(log::Record &record) const {
+		record.Add("domain", "GLFW");
+		if (mError != 0) {
+			record.Add("error", mError);
+			record.Add("description", mDescription);
+		}
+	}
+
+private:
+	int mError;
+	std::string_view mDescription;
+};
+
+extern "C" void ErrorCallback(int error, const char *description) {
+	log::Record{log::Level::Error, log::Location::Zero, "GLFW error.",
+	            GLFWErrorInfo{error, description}}
+		.Log();
 }
 
 void Main() {
