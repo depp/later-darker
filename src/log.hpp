@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <initializer_list>
+#include <source_location>
 #include <string_view>
 
 namespace demo {
@@ -128,16 +129,14 @@ private:
 void Init();
 
 // Write a message to the log.
-void Log(Level level, std::string_view file, int line,
-         std::string_view function, std::string_view message);
+void Log(Level level, std::source_location location, std::string_view message);
 
-void Log(Level level, std::string_view file, int line,
-         std::string_view function, std::string_view message,
+void Log(Level level, std::source_location location, std::string_view message,
          std::initializer_list<Attr> attributes);
 
 } // namespace log
 } // namespace demo
 
 #define LOG(level, ...) \
-	::demo::log::Log(::demo::log::Level::level, __FILE__, __LINE__, __func__, \
-	                 __VA_ARGS__)
+	::demo::log::Log(::demo::log::Level::level, \
+	                 std::source_location::current(), __VA_ARGS__)
