@@ -27,9 +27,8 @@ namespace demo {
 namespace {
 
 extern "C" void ErrorCallback(int error, const char *description) {
-	(void)error;
 	log::Log(log::Level::Error, log::Location::Zero, "GLFW error.",
-	         {{"description", description}});
+	         {{"code", error}, {"description", description}});
 }
 
 [[noreturn]]
