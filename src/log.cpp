@@ -24,6 +24,8 @@
 namespace demo {
 namespace log {
 
+const Location Location::Zero{};
+
 namespace {
 
 // Format for quoting a string.

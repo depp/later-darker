@@ -23,7 +23,7 @@ namespace {
 
 extern "C" void ErrorCallback(int error, const char *description) {
 	(void)error;
-	log::Log(log::Level::Error, log::Location{}, "GLFW error.",
+	log::Log(log::Level::Error, log::Location::Zero, "GLFW error.",
 	         {{"description", description}});
 }
 

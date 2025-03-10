@@ -134,6 +134,8 @@ struct Location {
 	int line;
 	std::string_view function;
 
+	static const Location Zero;
+
 	bool IsEmpty() const { return file.empty(); }
 };
 
