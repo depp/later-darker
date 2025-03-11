@@ -131,14 +131,21 @@ void Main() {
 
 namespace {
 
-void ParseCommandLine(const wchar_t *cmdLine) {
+void ParseCommandLine() {
+	// Note: Use GetCommandLineW instead of the command line passed in to
+	// WinMain, because CommandLineToArgvW behaves differently when passed an
+	// empty string.
+	const wchar_t *cmdLine = GetCommandLineW();
+	if (cmdLine == nullptr) {
+		FAIL("Could not get command line.");
+	}
 	int nArgs;
 	wchar_t **args = CommandLineToArgvW(cmdLine, &nArgs);
-	if (args == nullptr) {
+	if (args == nullptr || nArgs < 1) {
 		// FIXME: Error
 		FAIL("Could not parse command line.");
 	}
-	ParseCommandArguments(nArgs, args);
+	ParseCommandArguments(nArgs - 1, args + 1);
 	LocalFree(args);
 }
 
@@ -156,8 +163,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
                     _In_ LPWSTR lpCmdLine, _In_ int nShowCmd) {
 	(void)hInstance;
 	(void)hPrevInstance;
+	(void)lpCmdLine;
 	(void)nShowCmd;
-	demo::ParseCommandLine(lpCmdLine);
+	demo::ParseCommandLine();
 	demo::Main();
 	return 0;
 }
