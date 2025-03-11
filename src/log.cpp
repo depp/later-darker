@@ -61,20 +61,20 @@ const LevelInfo &GetLevelInfo(Level level) {
 }
 
 // Return true if the string should be quoted when logged.
-bool DoesNeedQuotes(std::string_view str, Context context) {
+template <typename Char>
+bool DoesNeedQuotes(std::basic_string_view<Char> str, Context context) {
 	if (str.empty()) {
 		return true;
 	}
-	unsigned minCh = 33;
+	Char minCh = 33;
 	if (context == Context::Line) {
 		if (str[0] == ' ' || *(str.end() - 1) == ' ') {
 			return true;
 		}
 		minCh = 32;
 	}
-	for (auto p = str.begin(), e = str.end(); p != e; ++p) {
-		const unsigned ch = static_cast<unsigned char>(*p);
-		if (ch < minCh || 127 < ch || ch == '"' || ch == '\\') {
+	for (const auto ch : str) {
+		if (ch < minCh || 126 < ch || ch == '"' || ch == '\\') {
 			return true;
 		}
 	}
@@ -137,9 +137,12 @@ void AppendValue(TextBuffer &out, const Value &value, Context context) {
 		}
 	} break;
 	case Kind::WideString: {
-		std::wstring_view str = value.WideStringValue();
-		// FIXME: Quote.
-		out.AppendWide(str);
+		std::wstring_view wideStr = value.WideStringValue();
+		if (DoesNeedQuotes(wideStr, context)) {
+			out.AppendWideQuoted(wideStr);
+		} else {
+			out.AppendWide(wideStr);
+		}
 	} break;
 	}
 }

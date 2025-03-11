@@ -9,24 +9,24 @@ namespace unicode {
 constexpr char32_t ReplacementCharacter = 0xFFFD;
 
 // Return true if the character is a surrogate character.
-inline bool IsSurrogate(unsigned ch) {
+inline bool IsSurrogate(char16_t ch) {
 	return 0xd800u <= ch && ch < 0xe000u;
 }
 
 // Return true if the character is a high surrogate character.
-inline bool IsSurrogateHigh(unsigned ch) {
+inline bool IsSurrogateHigh(char16_t ch) {
 	return 0xd800u <= ch && ch < 0xde00u;
 }
 
 // Return true if the character is a low surrogate character.
-inline bool IsSurrogateLow(unsigned ch) {
+inline bool IsSurrogateLow(char16_t ch) {
 	return 0xdc00u <= ch && ch < 0xe000u;
 }
 
 // Decode a surrogate pair as a single character.
-inline unsigned DecodeSurrogatePair(unsigned high, unsigned low) {
+inline char32_t DecodeSurrogatePair(char16_t high, char16_t low) {
 	constexpr unsigned off = (0xd800u << 10) + 0xdc00u - 0x10000u;
-	return high + low - off;
+	return (static_cast<unsigned>(high) << 10) + low - off;
 }
 
 // Result from reading UTF-8 text.

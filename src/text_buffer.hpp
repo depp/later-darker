@@ -79,8 +79,14 @@ public:
 	// Append a string with the characters escaped as necessary.
 	void AppendEscaped(std::string_view str);
 
-	// Append a string.
+	// Append a wide character string.
 	void AppendWide(const std::wstring_view value);
+
+	// Append a string, enclosed in quotes, with characters escaped.
+	void AppendWideQuoted(std::wstring_view str);
+
+	// Append a wide string with the characters escaped as necessary.
+	void AppendWideEscaped(std::wstring_view value);
 
 	// Append a number.
 	void AppendNumber(long long value);

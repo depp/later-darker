@@ -64,7 +64,7 @@ const char HexDigit[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
 char *AppendHexEscape8(char *ptr, unsigned ch) {
 	ptr[0] = '\\';
 	ptr[1] = 'x';
-	ptr[2] = HexDigit[ch >> 4];
+	ptr[2] = HexDigit[(ch >> 4) & 15];
 	ptr[3] = HexDigit[ch & 15];
 	return ptr + 4;
 }
@@ -72,7 +72,7 @@ char *AppendHexEscape8(char *ptr, unsigned ch) {
 char *AppendHexEscape16(char *ptr, unsigned ch) {
 	ptr[0] = '\\';
 	ptr[1] = 'u';
-	ptr[2] = HexDigit[ch >> 12];
+	ptr[2] = HexDigit[(ch >> 12) & 15];
 	ptr[3] = HexDigit[(ch >> 8) & 15];
 	ptr[4] = HexDigit[(ch >> 4) & 15];
 	ptr[5] = HexDigit[ch & 15];
@@ -84,7 +84,7 @@ char *AppendHexEscape32(char *ptr, unsigned ch) {
 	ptr[1] = 'U';
 	ptr[2] = '0';
 	ptr[3] = '0';
-	ptr[4] = HexDigit[ch >> 20];
+	ptr[4] = HexDigit[(ch >> 20) & 15];
 	ptr[5] = HexDigit[(ch >> 16) & 15];
 	ptr[6] = HexDigit[(ch >> 12) & 15];
 	ptr[7] = HexDigit[(ch >> 8) & 15];
@@ -158,6 +158,51 @@ void TextBuffer::AppendWide(std::wstring_view value) {
 				}
 			}
 			mPos = unicode::WriteUTF8(mPos, ch);
+		}
+	}
+}
+
+void TextBuffer::AppendWideQuoted(std::wstring_view str) {
+	AppendChar('"');
+	AppendWideEscaped(str);
+	AppendChar('"');
+}
+
+void TextBuffer::AppendWideEscaped(std::wstring_view value) {
+	constexpr std::size_t MinSpace = 4;
+	static_assert(util::GrowSize(0) >= MinSpace, "Wrong growth curve.");
+
+	const wchar_t *ptr = value.data(), *end = ptr + value.size();
+	while (ptr != end) {
+		unsigned ch, ch2, escape;
+		if (mEnd - mPos < MinSpace) {
+			Grow();
+		}
+		ch = static_cast<unsigned short>(*ptr++);
+		if (ch < 0x80) {
+			unsigned escape = Escape[ch];
+			if (escape == 0) {
+				*mPos++ = static_cast<char>(ch);
+			} else if (escape == 'x') {
+				mPos = AppendHexEscape8(mPos, ch);
+			} else {
+				mPos[0] = '\\';
+				mPos[1] = static_cast<char>(escape);
+				mPos += 2;
+			}
+		} else {
+			if (unicode::IsSurrogate(ch)) {
+				if (unicode::IsSurrogateHigh(ch) && ptr != end &&
+				    unicode::IsSurrogateLow(ch2 = *ptr)) {
+					ptr++;
+					mPos = AppendHexEscape32(
+						mPos, unicode::DecodeSurrogatePair(ch, ch2));
+				} else {
+					mPos = AppendHexEscape16(mPos, ch);
+				}
+			} else {
+				mPos = AppendHexEscape16(mPos, ch);
+			}
 		}
 	}
 }
