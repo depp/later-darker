@@ -59,7 +59,9 @@ extern "C" void ErrorCallback(int error, const char *description) {
 
 void Main() {
 	log::Init();
-	LOG(Info, "Test wide char.", log::Attr{"speaker", L"Πισθέταιρος"});
+	LOG(Info, "Test 2-byte.", log::Attr{"str", L"Πισθέταιρος"});
+	LOG(Info, "Test 3-byte.", log::Attr{"str", L"吾輩は猫である"});
+	LOG(Info, "Test 4-byte.", log::Attr{"str", L"Grin😀"});
 
 	glfwSetErrorCallback(ErrorCallback);
 	if (!glfwInit()) {

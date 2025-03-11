@@ -18,15 +18,17 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(later-darker WIN32
+	"src/gl_debug.cpp"
 	"src/gl_shader.cpp"
 	"src/log.cpp"
 	"src/main.cpp"
 	"src/os_string.cpp"
 	"src/scene_triangle.cpp"
 	"src/text_buffer.cpp"
+	"src/text_unicode.cpp"
 	"src/var.cpp"
 	"src/wide_text_buffer.cpp"
- "src/gl_debug.cpp")
+)
 
 if(MSVC)
 	target_compile_options(later-darker PRIVATE "/utf-8")
