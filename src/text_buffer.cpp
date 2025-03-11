@@ -38,6 +38,32 @@ void TextBuffer::AppendQuoted(std::string_view str) {
 
 namespace {
 
+constexpr unsigned ReplacementChar = 0xfffd;
+
+// Append a two-byte character.
+char *Append2(char *ptr, unsigned ch) {
+	ptr[0] = static_cast<char>(0xc0u | (ch >> 6));
+	ptr[1] = static_cast<char>(0x80u | (ch & 0x3fu));
+	return ptr + 2;
+}
+
+// Append a three-byte character.
+char *Append3(char *ptr, unsigned ch) {
+	ptr[0] = static_cast<char>(0xe0u | (ch >> 12));
+	ptr[1] = static_cast<char>(0x80u | ((ch >> 6) & 0x3fu));
+	ptr[2] = static_cast<char>(0x80u | (ch & 0x3fu));
+	return ptr + 3;
+}
+
+// Append a four-byte character.
+char *Append4(char *ptr, unsigned ch) {
+	ptr[0] = static_cast<char>(0xf0u | (ch >> 18));
+	ptr[1] = static_cast<char>(0x80u | ((ch >> 12) & 0x3fu));
+	ptr[2] = static_cast<char>(0x80u | ((ch >> 6) & 0x3fu));
+	ptr[3] = static_cast<char>(0x80u | (ch & 0x3fu));
+	return ptr + 4;
+}
+
 const unsigned char Escape[128] = {
 	'x', 'x', 'x', 'x', 'x',  'x', 'x', 'x', //
 	'x', 't', 'n', 'x', 'x',  'r', 'x', 'x', //
@@ -195,14 +221,9 @@ void TextBuffer::AppendWide(std::wstring_view value) {
 		if (ch < 0x80) {
 			*mPos++ = static_cast<char>(ch);
 		} else if (ch < 0x800) {
-			mPos[0] = static_cast<char>(0xc0u | (ch >> 6));
-			mPos[1] = static_cast<char>(0x80u | (ch & 0x3fu));
-			mPos += 2;
+			mPos = Append2(mPos, ch);
 		} else if (ch < 0xd800 || 0xe000 <= ch) {
-			mPos[0] = static_cast<char>(0xe0u | (ch >> 12));
-			mPos[1] = static_cast<char>(0x80u | ((ch >> 6) & 0x3fu));
-			mPos[2] = static_cast<char>(0x80u | (ch & 0x3fu));
-			mPos += 3;
+			mPos = Append3(mPos, ch);
 		} else {
 			constexpr unsigned off = (0xd800u << 10) + 0xdc00u - 0x10000u;
 			unsigned ch2;
@@ -215,18 +236,11 @@ void TextBuffer::AppendWide(std::wstring_view value) {
 			}
 			ptr++;
 			ch = (ch << 10) + ch2 - off;
-			mPos[0] = static_cast<char>(0xf0u | (ch >> 18));
-			mPos[1] = static_cast<char>(0x80u | ((ch >> 12) & 0x3fu));
-			mPos[2] = static_cast<char>(0x80u | ((ch >> 6) & 0x3fu));
-			mPos[3] = static_cast<char>(0x80u | (ch & 0x3fu));
-			mPos += 4;
+			mPos = Append4(mPos, ch);
 			continue;
 
 		replacement:
-			mPos[0] = static_cast<char>(0xef);
-			mPos[1] = static_cast<char>(0xbf);
-			mPos[2] = static_cast<char>(0xbd);
-			mPos += 3;
+			mPos = Append2(mPos, ReplacementChar);
 		}
 	}
 }
