@@ -23,6 +23,7 @@ add_executable(later-darker WIN32
 	"src/log.cpp"
 	"src/main.cpp"
 	"src/os_string.cpp"
+	"src/os_windows.cpp"
 	"src/scene_triangle.cpp"
 	"src/text_buffer.cpp"
 	"src/text_unicode.cpp"

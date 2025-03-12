@@ -4,6 +4,7 @@
 #include "log.hpp"
 
 #include "main.hpp"
+#include "os_windows.hpp"
 #include "text_buffer.hpp"
 #include "var.hpp"
 #include "wide_text_buffer.hpp"
@@ -16,11 +17,6 @@
 
 // Note:
 // https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
-
-#define NOMINMAX 1
-#define UNICODE 1
-#define WIN32_LEAN_AND_MEAN 1
-#include <Windows.h>
 
 namespace demo {
 namespace log {
@@ -222,20 +218,17 @@ void Init() {
 	}
 	BOOL ok = AllocConsole();
 	if (!ok) {
-		// FIXME: Error
-		FAIL("Failed to create console.");
+		FAIL("Failed to create console.", WindowsError::GetLast());
 	}
 	HANDLE console = CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_WRITE,
 	                             nullptr, OPEN_EXISTING, 0, nullptr);
 	if (console == INVALID_HANDLE_VALUE) {
-		// FIXME: Error.
-		FAIL("Failed to open console.");
+		FAIL("Failed to open console.", WindowsError::GetLast());
 	}
 	ok = SetConsoleMode(
 		console, ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 	if (!ok) {
-		// FIXME: Error.
-		FAIL("Failed to set console mode.");
+		FAIL("Failed to set console mode.", WindowsError::GetLast());
 	}
 	ConsoleHandle = console;
 }

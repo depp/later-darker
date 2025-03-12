@@ -202,8 +202,10 @@ public:
 		: mLevel{level}, mLocation{location}, mMessage{message} {}
 
 	Record(Level level, Location location, std::string_view message,
-	       AttributeProvider auto... attrs)
+	       const AttributeProvider auto &...attrs)
 		: mLevel{level}, mLocation{location}, mMessage{message} {
+		// Note: Above, the attrs parameter is const auto& for lifetime
+		// extension, since some AttributeProvider instances own data.
 		((void)attrs.AddToRecord(*this), ...);
 	}
 

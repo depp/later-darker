@@ -7,14 +7,12 @@
 #include "gl_debug.hpp"
 #include "gl_shader.hpp"
 #include "log.hpp"
+#include "os_windows.hpp"
 #include "scene_triangle.hpp"
 #include "var.hpp"
 
 #include <GLFW/glfw3.h>
 
-#define UNICODE 1
-#define WIN32_LEAN_AND_MEAN 1
-#include <Windows.h>
 #include <shellapi.h>
 
 #define FAIL_GLFW(...) FAIL(__VA_ARGS__, GLFWErrorInfo::Get())
@@ -139,14 +137,14 @@ void ParseCommandLine() {
 	// empty string.
 	const wchar_t *cmdLine = GetCommandLineW();
 	if (cmdLine == nullptr) {
-		FAIL("Could not get command line.");
+		FAIL("Could not get command line.", WindowsError::GetLast());
 	}
 	int nArgs;
 	wchar_t **args = CommandLineToArgvW(cmdLine, &nArgs);
-	if (args == nullptr || nArgs < 1) {
-		// FIXME: Error
-		FAIL("Could not parse command line.");
+	if (args == nullptr) {
+		FAIL("Could not parse command line.", WindowsError::GetLast());
 	}
+	CHECK(nArgs >= 1);
 	ParseCommandArguments(nArgs - 1, args + 1);
 	LocalFree(args);
 }
