@@ -225,8 +225,9 @@ void Init() {
 	if (console == INVALID_HANDLE_VALUE) {
 		FAIL("Failed to open console.", WindowsError::GetLast());
 	}
-	ok = SetConsoleMode(
-		console, ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+	ok = SetConsoleMode(console, ENABLE_PROCESSED_OUTPUT |
+	                                 ENABLE_WRAP_AT_EOL_OUTPUT |
+	                                 ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 	if (!ok) {
 		FAIL("Failed to set console mode.", WindowsError::GetLast());
 	}
