@@ -56,4 +56,24 @@ WindowsError WindowsError::GetLast() {
 	return WindowsError(GetLastError());
 }
 
+void DumpEnv() {
+	wchar_t *strings = GetEnvironmentStringsW();
+	if (strings == nullptr) {
+		FAIL("Could not get environment variables.", WindowsError::GetLast());
+	}
+	for (const wchar_t *ptr = strings;;) {
+		std::size_t n = wcslen(ptr);
+		if (n == 0) {
+			break;
+		}
+		std::wstring_view def{ptr, n};
+		std::size_t i = def.find(L'=');
+		CHECK(i != std::wstring_view::npos);
+		LOG(Debug, "Variable:", log::Attr{"name", def.substr(0, i)},
+		    log::Attr{"value", def.substr(i + 1)});
+		ptr += n + 1;
+	}
+	FreeEnvironmentStringsW(strings);
+}
+
 } // namespace demo
