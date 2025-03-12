@@ -8,6 +8,7 @@
 
 #include <cstdio>
 #include <limits>
+#include <string>
 #include <string_view>
 
 namespace demo {
@@ -15,22 +16,17 @@ namespace gl_shader {
 
 namespace {
 
-constexpr std::string_view Vertex{
-	"#version 330\n"
-	"layout(location = 0) in vec2 Vertex;\n"
-	"void main() {\n"
-	"    gl_Position = vec4(Vertex, 0.0, 1.0);\n"
-	"}\n"};
-
-constexpr std::string_view Fragment{
-	"#version 330\n"
-	"out vec4 FragColor;\n"
-	"void main() {\n"
-	"    FragColor = vec4(0.5, 0.5, 0.5, 1.0);\n"
-	"}\n"};
-
 // Compile a shader from the given source code.
-GLuint CompileShader(GLenum shaderType, std::string_view source) {
+GLuint CompileShader(GLenum shaderType, std::string_view fileName) {
+	std::vector<unsigned char> data;
+	std::string filePath{"shader/"};
+	filePath.append(fileName);
+	if (!ReadFile(&data, filePath)) {
+		FAIL("Could not read shader.", log::Attr{"file", fileName});
+	}
+	std::string_view source{reinterpret_cast<const char *>(data.data()),
+	                        data.size()};
+
 	GLuint shader = glCreateShader(shaderType);
 	if (shader == 0) {
 		FAIL("Could not create shader.");
@@ -78,8 +74,8 @@ void Init() {
 	std::string_view text{reinterpret_cast<char *>(data.data()), data.size()};
 	LOG(Debug, "Got data.", log::Attr{"data", text});
 
-	GLuint vertex = CompileShader(GL_VERTEX_SHADER, Vertex);
-	GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, Fragment);
+	GLuint vertex = CompileShader(GL_VERTEX_SHADER, "triangle.vert");
+	GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, "triangle.frag");
 	GLuint program = LinkProgram(vertex, fragment);
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
