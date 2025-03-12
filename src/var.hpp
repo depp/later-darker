@@ -15,6 +15,9 @@ extern bool DebugContext;
 // If true, allocate a console (Windows).
 extern bool AllocConsole;
 
+// Path to the directory containing this project.
+extern os_string ProjectPath;
+
 } // namespace var
 
 // Parse the program's command-line arguments.

@@ -4,6 +4,7 @@
 #include "gl_shader.hpp"
 
 #include "log.hpp"
+#include "os_file.hpp"
 
 #include <cstdio>
 #include <limits>
@@ -72,6 +73,11 @@ GLuint LinkProgram(GLuint vertex, GLuint fragment) {
 GLuint Program;
 
 void Init() {
+	std::vector<unsigned char> data;
+	ReadFile(&data, "shader/triangle.vert");
+	std::string_view text{reinterpret_cast<char *>(data.data()), data.size()};
+	LOG(Debug, "Got data.", log::Attr{"data", text});
+
 	GLuint vertex = CompileShader(GL_VERTEX_SHADER, Vertex);
 	GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, Fragment);
 	GLuint program = LinkProgram(vertex, fragment);

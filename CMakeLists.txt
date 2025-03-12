@@ -22,6 +22,7 @@ add_executable(later-darker WIN32
 	"src/gl_shader.cpp"
 	"src/log.cpp"
 	"src/main.cpp"
+	"src/os_file.cpp"
 	"src/os_string.cpp"
 	"src/os_windows.cpp"
 	"src/scene_triangle.cpp"

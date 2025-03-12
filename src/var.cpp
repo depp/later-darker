@@ -5,12 +5,15 @@
 
 #include "log.hpp"
 
+#include <optional>
+
 namespace demo {
 
 namespace var {
 
 bool DebugContext;
 bool AllocConsole;
+os_string ProjectPath;
 
 } // namespace var
 
@@ -36,23 +39,83 @@ private:
 	os_char **mEnd;
 };
 
+std::optional<bool> ParseBool(std::string_view value) {
+	if (value == "0" || value == "n" || value == "no" || value == "off" ||
+	    value == "false") {
+		return false;
+	}
+	if (value == "1" || value == "y" || value == "yes" || value == "on" ||
+	    value == "true") {
+		return true;
+	}
+	return std::nullopt;
+}
+
+// Kinds of variable data.
+enum class Kind {
+	Bool,
+	String,
+	WideString,
+};
+
 // Definition for a configuration variable.
 class VarDefinition {
 public:
 	constexpr VarDefinition(std::string_view name, bool *value)
-		: mName{name}, mValue{value} {}
+		: mName{name}, mKind{Kind::Bool} {
+		mData.boolValue = value;
+	}
+	constexpr VarDefinition(std::string_view name, std::string *value)
+		: mName{name}, mKind{Kind::String} {
+		mData.stringValue = value;
+	}
+	constexpr VarDefinition(std::string_view name, std::wstring *value)
+		: mName{name}, mKind{Kind::WideString} {
+		mData.wideStringValue = value;
+	}
 
 	std::string_view name() const { return mName; }
-	bool &boolValue() const { return *mValue; }
+
+	void Set(std::string_view string) const {
+		switch (mKind) {
+		case Kind::Bool: {
+			std::optional<bool> parsed = ParseBool(string);
+			if (!parsed.has_value()) {
+				FAIL("Invalid boolean.", log::Attr{"var", mName},
+				     log::Attr{"value", string});
+			}
+			*mData.boolValue = *parsed;
+		} break;
+		case Kind::String:
+			mData.stringValue->assign(string);
+			break;
+		default:
+			FAIL("Unsupported variable kind.");
+		}
+	}
+
+	void Set(std::wstring_view string) const {
+		if (mKind == Kind::WideString) {
+			mData.wideStringValue->assign(string);
+		} else {
+			Set(ToString(string));
+		}
+	}
 
 private:
 	std::string_view mName;
-	bool *mValue;
+	Kind mKind;
+	union {
+		bool *boolValue;
+		std::string *stringValue;
+		std::wstring *wideStringValue;
+	} mData;
 };
 
 const VarDefinition VarDefinitions[] = {
 	{"DebugContext", &var::DebugContext},
 	{"AllocConsole", &var::AllocConsole},
+	{"ProjectPath", &var::ProjectPath},
 };
 
 const VarDefinition *LookupVar(std::string_view name) {
@@ -64,19 +127,6 @@ const VarDefinition *LookupVar(std::string_view name) {
 	return nullptr;
 }
 
-bool ParseBool(std::string_view value) {
-	if (value == "0" || value == "n" || value == "no" || value == "off" ||
-	    value == "false") {
-		return false;
-	}
-	if (value == "1" || value == "y" || value == "yes" || value == "on" ||
-	    value == "true") {
-		return true;
-	}
-	// FIXME: real error handling.
-	FAIL("Invalid boolean.");
-}
-
 } // namespace
 
 void ParseCommandArguments(int argCount, os_char **args) {
@@ -85,20 +135,16 @@ void ParseCommandArguments(int argCount, os_char **args) {
 		os_string_view arg = iter.Next();
 		std::size_t pos = arg.find('=');
 		if (pos == os_string_view::npos) {
-			// FIXME: show arg.
 			FAIL("Invalid command-line argument syntax.",
 			     log::Attr{"argument", arg});
 		}
 		std::string name = ToString(arg.substr(0, pos));
 		const VarDefinition *definition = LookupVar(name);
 		if (definition == nullptr) {
-			// FIXME: Show full arg.
 			FAIL("Command-line contains a value for an unknown variable.",
 			     log::Attr{"name", name});
 		}
-		std::string valueStr = ToString(arg.substr(pos + 1));
-		bool value = ParseBool(valueStr);
-		definition->boolValue() = value;
+		definition->Set(arg.substr(pos + 1));
 	}
 }
 

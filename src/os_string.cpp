@@ -6,7 +6,9 @@
 
 #include "log.hpp"
 
+#include <algorithm>
 #include <cstdio>
+#include <iterator>
 #include <limits>
 
 #define NOMINMAX 1
@@ -56,6 +58,23 @@ os_string ToOSString(std::string_view value) {
 	os_string result;
 	Append(&result, value);
 	return result;
+}
+
+void AppendPath(os_string *path, std::string_view view) {
+	if (path->empty()) {
+		FAIL("Path is empty.");
+	}
+	if ((*path)[path->size() - 1] != Separator) {
+		path->push_back(Separator);
+	}
+	std::size_t pos = path->size();
+	std::copy(view.begin(), view.end(), std::back_inserter(*path));
+	for (os_char *ptr = path->data() + pos, *end = path->data() + path->size();
+	     ptr != end; ++ptr) {
+		if (*ptr == L'/') {
+			*ptr = L'\\';
+		}
+	}
 }
 
 } // namespace demo

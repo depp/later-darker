@@ -13,6 +13,8 @@ using os_char = wchar_t;
 using os_string_view = std::basic_string_view<os_char>;
 using os_string = std::basic_string<os_char>;
 
+constexpr os_char Separator = L'\\';
+
 // Append an OS-native string to a UTF-8 string.
 void Append(std::string *dest, os_string_view value);
 
@@ -24,5 +26,9 @@ std::string ToString(os_string_view value);
 
 // Convert a UTF-8 string to an OS-native string.
 os_string ToOSString(std::string_view value);
+
+// Append a relative path to an existing path. The relative path must be
+// non-empty and not start with a slash or dot.
+void AppendPath(os_string *path, std::string_view view);
 
 } // namespace demo
