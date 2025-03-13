@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.30)
 project(later-darker)
 
+# This is for GLAD, and it allows GLAD to use a virtualenv Python if found
+# first, which means that GLAD can find jinja2 in such an environment.
+if(NOT DEFINED Python_FIND_FRAMEWORK)
+	set(Python_FIND_FRAMEWORK NEVER)
+endif()
+
 include(FetchContent)
 FetchContent_Declare(
 	glad
