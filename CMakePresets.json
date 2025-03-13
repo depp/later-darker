@@ -67,7 +67,8 @@
       "hidden": true,
       "inherits": "base",
       "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
+        "CMAKE_COLOR_DIAGNOSTICS": "YES"
       },
       "condition": {
         "type": "equals",
