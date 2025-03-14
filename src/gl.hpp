@@ -12,10 +12,10 @@
 // OpenGL is deprecated on macOS. We don't care. This silences the warnings.
 #define GL_SILENCE_DEPRECATION 1
 
-#include <OpenGL/gl3.h>
+#include <OpenGL/gl3.h> // IWYU pragma: export
 
 #else
 
-#include <glad/gl.h>
+#include <glad/gl.h> // IWYU pragma: export
 
 #endif

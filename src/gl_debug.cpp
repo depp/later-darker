@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "gl_debug.hpp"
 
-#include "gl.hpp"
+#include "gl.hpp" // IWYU pragma: keep
 #include "log.hpp"
 
 #if GL_KHR_debug
