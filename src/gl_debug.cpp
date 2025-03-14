@@ -72,7 +72,7 @@ namespace demo {
 namespace gl_debug {
 
 void Init() {
-	LOG("KHR_debug not available.");
+	LOG(Debug, "KHR_debug not available.");
 }
 
 } // namespace gl_debug

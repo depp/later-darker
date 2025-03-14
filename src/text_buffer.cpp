@@ -180,7 +180,7 @@ void TextBuffer::AppendWideEscaped(std::wstring_view value) {
 		}
 		ch = static_cast<unsigned short>(*ptr++);
 		if (ch < 0x80) {
-			unsigned escape = Escape[ch];
+			escape = Escape[ch];
 			if (escape == 0) {
 				*mPos++ = static_cast<char>(ch);
 			} else if (escape == 'x') {

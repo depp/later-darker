@@ -55,7 +55,9 @@ std::optional<bool> ParseBool(std::string_view value) {
 enum class Kind {
 	Bool,
 	String,
+#if WIN32
 	WideString,
+#endif
 };
 
 // Definition for a configuration variable.
@@ -69,10 +71,12 @@ public:
 		: mName{name}, mKind{Kind::String} {
 		mData.stringValue = value;
 	}
+#if WIN32
 	constexpr VarDefinition(std::string_view name, std::wstring *value)
 		: mName{name}, mKind{Kind::WideString} {
 		mData.wideStringValue = value;
 	}
+#endif
 
 	std::string_view name() const { return mName; }
 
@@ -94,6 +98,7 @@ public:
 		}
 	}
 
+#if WIN32
 	void Set(std::wstring_view string) const {
 		if (mKind == Kind::WideString) {
 			mData.wideStringValue->assign(string);
@@ -101,6 +106,7 @@ public:
 			Set(ToString(string));
 		}
 	}
+#endif
 
 private:
 	std::string_view mName;

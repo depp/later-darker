@@ -7,13 +7,10 @@
 #include "gl_debug.hpp"
 #include "gl_shader.hpp"
 #include "log.hpp"
-#include "os_windows.hpp"
 #include "scene_triangle.hpp"
 #include "var.hpp"
 
 #include <GLFW/glfw3.h>
-
-#include <shellapi.h>
 
 #define FAIL_GLFW(...) FAIL(__VA_ARGS__, GLFWErrorInfo::Get())
 
@@ -99,7 +96,9 @@ void Main() {
 	}
 
 	glfwMakeContextCurrent(window);
+#if WIN32
 	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
+#endif
 	if (var::DebugContext) {
 		gl_debug::Init();
 	}
@@ -127,11 +126,19 @@ void Main() {
 }
 
 } // namespace
+} // namespace demo
+
+#if WIN32
 
 // ============================================================================
 // Windows
 // ============================================================================
 
+#include "os_windows.hpp"
+
+#include <shellapi.h>
+
+namespace demo {
 namespace {
 
 void ParseCommandLine() {
@@ -172,3 +179,26 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	demo::Main();
 	return 0;
 }
+
+#else
+
+// ============================================================================
+// Unix
+// ============================================================================
+
+namespace demo {
+
+[[noreturn]]
+void ExitError() {
+	glfwTerminate();
+	std::exit(1);
+}
+
+} // namespace demo
+
+int main(int argc, char **argv) {
+	demo::ParseCommandArguments(argc - 1, argv + 1);
+	demo::Main();
+}
+
+#endif

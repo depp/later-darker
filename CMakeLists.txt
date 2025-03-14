@@ -36,15 +36,27 @@ add_executable(later-darker WIN32
 	"src/gl_shader.cpp"
 	"src/log.cpp"
 	"src/main.cpp"
-	"src/os_file.cpp"
 	"src/os_string.cpp"
 	"src/scene_triangle.cpp"
 	"src/text_buffer.cpp"
 	"src/text_unicode.cpp"
 	"src/var.cpp"
-	"$<$<BOOL:${WIN32}>:src/os_windows.cpp>"
-	"$<$<BOOL:${WIN32}>:src/wide_text_buffer.cpp>"
 )
+
+if(WIN32)
+	target_sources(later-darker PRIVATE
+		"src/log_windows.cpp"
+		"src/os_file_windows.cpp"
+		"src/os_windows.cpp"
+		"src/wide_text_buffer.cpp"
+	)
+else()
+	target_sources(later-darker PRIVATE
+		"src/log_unix.cpp"
+		"src/os_file_unix.cpp"
+		"src/os_unix.cpp"
+	)
+endif()
 
 if(MSVC)
 	target_compile_options(later-darker PRIVATE "/utf-8")
@@ -55,6 +67,10 @@ endif()
 
 find_package(glfw3 CONFIG REQUIRED)
 target_link_libraries(later-darker PRIVATE glfw)
+
+if(APPLE)
+	target_link_libraries(later-darker PRIVATE "-framework OpenGL")
+endif()
 
 if(USE_GLAD)
 	add_subdirectory("${glad_SOURCE_DIR}/cmake" glad_cmake)

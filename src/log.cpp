@@ -3,20 +3,10 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "log.hpp"
 
-#include "main.hpp"
-#include "os_windows.hpp"
+#include "log_internal.hpp"
 #include "text_buffer.hpp"
-#include "var.hpp"
-#include "wide_text_buffer.hpp"
 
-#include <array>
-#include <charconv>
-#include <limits>
-#include <span>
-#include <string>
-
-// Note:
-// https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
+#include <string_view>
 
 namespace demo {
 namespace log {
@@ -25,19 +15,13 @@ const Location Location::Zero{};
 
 namespace {
 
+bool HasLog;
+
 // Format for quoting a string.
 enum class Context {
 	Inline, // String appears inline, with other content.
 	Line,   // String appears on its own line.
 };
-
-constexpr std::size_t LogBufferSize = 256;
-
-HANDLE ConsoleHandle;
-
-bool LogAvailable() {
-	return ConsoleHandle != nullptr;
-}
 
 struct LevelInfo {
 	std::string_view color;
@@ -131,6 +115,8 @@ void AppendValue(TextBuffer &out, const Value &value, Context context) {
 		} else {
 			out.Append(str);
 		}
+		std::string s;
+		s.append(str);
 	} break;
 	case Kind::WideString: {
 		std::wstring_view wideStr = value.WideStringValue();
@@ -143,29 +129,10 @@ void AppendValue(TextBuffer &out, const Value &value, Context context) {
 	}
 }
 
-struct LogBuffer {
-	TextBuffer buffer{bufferData};
-	WideTextBuffer wideBuffer{wideBufferData};
-	char bufferData[LogBufferSize];
-	wchar_t wideBufferData[LogBufferSize];
+} // namespace
 
-	LogBuffer() : buffer{bufferData}, wideBuffer{wideBufferData} {}
-
-	// Format a log message and write it to the console.
-	void Log(const Record &record);
-
-	// Format a message as a multi-line block. Used for dialogs.
-	void LogBlock(const Record &record);
-};
-
-void LogBuffer::Log(const Record &record) {
-	if (!LogAvailable()) {
-		return;
-	}
-
-	// Create the log message in UTF-8.
+void WriteLine(TextBuffer &buffer, const Record &record) {
 	const LevelInfo &levelInfo = GetLevelInfo(record.level());
-	buffer.Clear();
 	buffer.Append(levelInfo.color);
 	buffer.Append(levelInfo.name);
 	if (!levelInfo.color.empty()) {
@@ -184,18 +151,9 @@ void LogBuffer::Log(const Record &record) {
 		AppendValue(buffer, attr.value(), Context::Inline);
 	}
 	buffer.AppendChar('\n');
-
-	// Convert to wide characters.
-	wideBuffer.Clear();
-	wideBuffer.AppendMultiByte(buffer.Contents());
-	// FIXME: overflow check?
-	DWORD size = static_cast<DWORD>(wideBuffer.Size());
-	DWORD written;
-	WriteConsoleW(ConsoleHandle, wideBuffer.Start(), size, &written, nullptr);
 }
 
-void LogBuffer::LogBlock(const Record &record) {
-	buffer.Clear();
+void WriteBlock(TextBuffer &buffer, const Record &record) {
 	buffer.Append(record.message());
 	buffer.AppendChar('\n');
 	for (const Attr &attr : record.attributes()) {
@@ -210,51 +168,23 @@ void LogBuffer::LogBlock(const Record &record) {
 	}
 }
 
-} // namespace
-
 void Init() {
-	if (!var::AllocConsole) {
-		return;
-	}
-	BOOL ok = AllocConsole();
-	if (!ok) {
-		FAIL("Failed to create console.", WindowsError::GetLast());
-	}
-	HANDLE console = CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_WRITE,
-	                             nullptr, OPEN_EXISTING, 0, nullptr);
-	if (console == INVALID_HANDLE_VALUE) {
-		FAIL("Failed to open console.", WindowsError::GetLast());
-	}
-	ok = SetConsoleMode(console, ENABLE_PROCESSED_OUTPUT |
-	                                 ENABLE_WRAP_AT_EOL_OUTPUT |
-	                                 ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-	if (!ok) {
-		FAIL("Failed to set console mode.", WindowsError::GetLast());
-	}
-	ConsoleHandle = console;
+	HasLog = Writer::Init();
 }
 
 void Record::Log() const {
-	if (!LogAvailable()) {
+	if (!HasLog) {
 		return;
 	}
 
-	LogBuffer buffer;
-	buffer.Log(*this);
+	Writer writer;
+	writer.Log(*this);
 }
 
 [[noreturn]]
 void Record::Fail() const {
-	LogBuffer buffer;
-
-	buffer.Log(*this);
-
-	buffer.LogBlock(*this);
-	buffer.buffer.AppendChar('\0');
-	buffer.wideBuffer.Clear();
-	buffer.wideBuffer.AppendMultiByte(buffer.buffer.Contents());
-	MessageBoxW(nullptr, buffer.wideBuffer.Start(), nullptr, MB_ICONSTOP);
-	ExitError();
+	Writer writer;
+	writer.Fail(*this);
 }
 
 } // namespace log
