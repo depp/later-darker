@@ -16,7 +16,7 @@ class TextBuffer {
 public:
 	// Initialize an empty text buffer.
 	TextBuffer()
-		: mStart{nullptr}, mPos{nullptr}, mEnd{nullptr}, mIsDynamic{nullptr} {}
+		: mStart{nullptr}, mPos{nullptr}, mEnd{nullptr}, mIsDynamic{false} {}
 
 	// Initialize the text buffer with existing, preallocated storage. This
 	// storage will be used by the buffer until the buffer grows beyond that

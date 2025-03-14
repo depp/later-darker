@@ -15,7 +15,7 @@ class WideTextBuffer {
 public:
 	// Initialize an empty text buffer.
 	WideTextBuffer()
-		: mStart{nullptr}, mPos{nullptr}, mEnd{nullptr}, mIsDynamic{nullptr} {}
+		: mStart{nullptr}, mPos{nullptr}, mEnd{nullptr}, mIsDynamic{0} {}
 
 	// Initialize the text buffer with existing, preallocated storage. This
 	// storage will be used by the buffer until the buffer grows beyond that
