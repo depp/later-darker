@@ -101,7 +101,7 @@ void TextBuffer::AppendEscaped(std::string_view str) {
 
 	const char *ptr = str.data(), *end = ptr + str.size();
 	while (ptr != end) {
-		if (mEnd - mPos < MinSpace) {
+		if (Avail() < MinSpace) {
 			Grow();
 		}
 		unsigned ch = static_cast<unsigned char>(*ptr);
@@ -141,7 +141,7 @@ void TextBuffer::AppendWide(std::wstring_view value) {
 	const wchar_t *ptr = value.data(), *end = ptr + value.size();
 	while (ptr != end) {
 		unsigned ch, ch2;
-		if (mEnd - mPos < MinSpace) {
+		if (Avail() < MinSpace) {
 			Grow();
 		}
 		ch = static_cast<unsigned short>(*ptr++);
@@ -175,7 +175,7 @@ void TextBuffer::AppendWideEscaped(std::wstring_view value) {
 	const wchar_t *ptr = value.data(), *end = ptr + value.size();
 	while (ptr != end) {
 		unsigned ch, ch2, escape;
-		if (mEnd - mPos < MinSpace) {
+		if (Avail() < MinSpace) {
 			Grow();
 		}
 		ch = static_cast<unsigned short>(*ptr++);
