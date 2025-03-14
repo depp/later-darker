@@ -7,5 +7,6 @@
 # Vcpkg dependencies.
 /vcpkg_installed/
 
-# Clangd cache.
+# Clangd.
 /.cache/
+/.clangd

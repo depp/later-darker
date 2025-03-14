@@ -40,3 +40,9 @@ In Visual Studio, go to **Debug** → **Debug and Launch Settings for later-dark
   ]
 }
 ```
+
+## Clangd
+
+Write the .clangd configuration:
+
+    python config.py
