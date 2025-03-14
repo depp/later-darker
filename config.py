@@ -12,6 +12,7 @@ def write_file(path, text):
 
 
 def main():
+    srcdir = os.path.dirname(os.path.abspath(__file__))
     system = platform.system()
     if system == "Darwin":
         preset = "macos-debug"
@@ -22,7 +23,7 @@ def main():
     data = {
         "CompileFlags": {
             "CompilationDatabase": os.path.join(
-                "out", "build", preset, "compile_commands.json"
+                srcdir, "out", "build", preset, "compile_commands.json"
             )
         }
     }
