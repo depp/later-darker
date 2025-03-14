@@ -54,7 +54,7 @@ else()
 endif()
 
 find_package(glfw3 CONFIG REQUIRED)
-target_link_libraries(later-darker PRIVATE glfw3)
+target_link_libraries(later-darker PRIVATE glfw)
 
 if(USE_GLAD)
 	add_subdirectory("${glad_SOURCE_DIR}/cmake" glad_cmake)
