@@ -6,6 +6,8 @@
 #include "gl.hpp"
 #include "log.hpp"
 
+#if GL_KHR_debug
+
 #include <string_view>
 
 namespace demo {
@@ -63,3 +65,17 @@ void Init() {
 
 } // namespace gl_debug
 } // namespace demo
+
+#else
+
+namespace demo {
+namespace gl_debug {
+
+void Init() {
+	LOG("KHR_debug not available.");
+}
+
+} // namespace gl_debug
+} // namespace demo
+
+#endif
