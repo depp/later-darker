@@ -1,0 +1,3 @@
+{
+  "cmake.configureArgs": ["-DCMAKE_COMPILE_WARNING_AS_ERROR=YES"]
+}
