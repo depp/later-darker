@@ -38,12 +38,12 @@ add_executable(later-darker WIN32
 	"src/main.cpp"
 	"src/os_file.cpp"
 	"src/os_string.cpp"
-	"src/os_windows.cpp"
 	"src/scene_triangle.cpp"
 	"src/text_buffer.cpp"
 	"src/text_unicode.cpp"
 	"src/var.cpp"
-	"src/wide_text_buffer.cpp"
+	"$<$<BOOL:${WIN32}>:src/os_windows.cpp>"
+	"$<$<BOOL:${WIN32}>:src/wide_text_buffer.cpp>"
 )
 
 if(MSVC)
