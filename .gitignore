@@ -1,3 +1,11 @@
+# Visual Studio configuration files.
 /.vs/
+
+# Build directory.
 /out/
+
+# Vcpkg dependencies.
 /vcpkg_installed/
+
+# Clangd cache.
+/.cache/
