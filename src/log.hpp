@@ -34,11 +34,13 @@ enum class Kind {
 	WideString,
 };
 
+#if _MSC_VER
 // Suppress uninitialized member variable warning. This arises from the union.
 // The union is only initialized when certain tags are chosen, and the string
 // type must have a default constructor so it can be put inside the union.
 #pragma warning(push)
 #pragma warning(disable : 26495)
+#endif
 
 // A value that can be logged as part of a log statement.
 class Value {
@@ -153,7 +155,9 @@ private:
 	} mData;
 };
 
+#if _MSC_VER
 #pragma warning(pop)
+#endif
 
 class Record;
 
