@@ -8,7 +8,7 @@
 
 namespace demo {
 
-#if WIN32
+#if _WIN32
 // OS-native character type. For Windows, this is wchar_t. Otherwise it is char.
 using os_char = wchar_t;
 constexpr os_char Separator = L'\\';
@@ -20,7 +20,7 @@ constexpr os_char Separator = '/';
 using os_string_view = std::basic_string_view<os_char>;
 using os_string = std::basic_string<os_char>;
 
-#if WIN32
+#if _WIN32
 
 // Append an OS-native string to a UTF-8 string.
 void Append(std::string *dest, os_string_view value);

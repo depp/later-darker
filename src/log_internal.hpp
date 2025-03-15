@@ -5,7 +5,7 @@
 
 #include "text_buffer.hpp"
 
-#if WIN32
+#if _WIN32
 #include "wide_text_buffer.hpp"
 #endif
 
@@ -26,13 +26,13 @@ void WriteLine(TextBuffer &buffer, const Record &record, bool useColor,
 // Write a record as a multi-line block.
 void WriteBlock(TextBuffer &buffer, const Record &record);
 
-#if WIN32
+#if _WIN32
 
 // Sink for writing log messages on Windows.
 class WindowsWriter {
 public:
 	// Initialize the log destination. Return true if logging is available.
-	static void Init();
+	static bool Init();
 
 	WindowsWriter() : mBuffer{mBufferData}, mWideBuffer{mWideBufferData} {}
 

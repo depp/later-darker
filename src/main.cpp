@@ -96,7 +96,7 @@ void Main() {
 	}
 
 	glfwMakeContextCurrent(window);
-#if WIN32
+#if _WIN32
 	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
 #endif
 	if (var::DebugContext) {
@@ -128,7 +128,7 @@ void Main() {
 } // namespace
 } // namespace demo
 
-#if WIN32
+#if _WIN32
 
 // ============================================================================
 // Windows

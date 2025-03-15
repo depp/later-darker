@@ -3,15 +3,11 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "wide_text_buffer.hpp"
 
+#include "os_windows.hpp"
 #include "util.hpp"
 
 #include <cstdlib>
 #include <limits>
-
-#define NOMINMAX 1
-#define UNICODE 1
-#define WIN32_LEAN_AND_MEAN 1
-#include <Windows.h>
 
 namespace demo {
 

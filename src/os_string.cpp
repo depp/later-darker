@@ -40,7 +40,7 @@ void AppendPath(os_string *path, std::string_view view) {
 
 } // namespace demo
 
-#if WIN32
+#if _WIN32
 #include "os_windows.hpp"
 
 #include <limits>

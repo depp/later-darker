@@ -4,6 +4,7 @@
 #include "log_internal.hpp"
 
 #include "log.hpp"
+#include "main.hpp"
 #include "os_windows.hpp"
 #include "var.hpp"
 
@@ -67,7 +68,7 @@ void WindowsWriter::Fail(const Record &record) {
 	mBuffer.AppendChar('\0');
 
 	mWideBuffer.Clear();
-	mWideBuffer.AppendMultiByte(buffer.buffer.Contents());
+	mWideBuffer.AppendMultiByte(mBuffer.Contents());
 	MessageBoxW(nullptr, mWideBuffer.Start(), nullptr, MB_ICONSTOP);
 	ExitError();
 }
