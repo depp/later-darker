@@ -54,7 +54,7 @@ bool UnixWriter::Init() {
 
 void UnixWriter::Log(const Record &record) {
 	mBuffer.Clear();
-	WriteLine(mBuffer, record, IsColorEnabled);
+	WriteLine(mBuffer, record, IsColorEnabled, true);
 	// Ignore errors, throw this into the void.
 	(void)::write(STDERR_FILENO, mBuffer.Start(), mBuffer.Size());
 }
@@ -62,7 +62,7 @@ void UnixWriter::Log(const Record &record) {
 [[noreturn]]
 void UnixWriter::Fail(const Record &record) {
 	mBuffer.Clear();
-	WriteLine(mBuffer, record, IsColorEnabled);
+	WriteLine(mBuffer, record, IsColorEnabled, true);
 	if (IsColorEnabled) {
 		mBuffer.Append("\x1b[31m");
 	}

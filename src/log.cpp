@@ -26,14 +26,15 @@ enum class Context {
 struct LevelInfo {
 	std::string_view color;
 	std::string_view name;
+	std::string_view emoji;
 };
 
 // These names all have the same width so log messages line up.
 const LevelInfo Levels[] = {
-	{"\x1b[36m", "DEBUG"},
-	{"", "INFO "},
-	{"\x1b[33m", "WARN "},
-	{"\x1b[31m", "ERROR"},
+	{"\x1b[36m", "DEBUG", "📘"},
+	{"", "INFO ", "📄"},
+	{"\x1b[33m", "WARN ", "⚠️"},
+	{"\x1b[31m", "ERROR", "🛑"},
 };
 
 const LevelInfo &GetLevelInfo(Level level) {
@@ -131,8 +132,13 @@ void AppendValue(TextBuffer &out, const Value &value, Context context) {
 
 } // namespace
 
-void WriteLine(TextBuffer &buffer, const Record &record, bool useColor) {
+void WriteLine(TextBuffer &buffer, const Record &record, bool useColor,
+               bool useEmoji) {
 	const LevelInfo &levelInfo = GetLevelInfo(record.level());
+	if (useEmoji) {
+		buffer.Append(levelInfo.emoji);
+		buffer.AppendChar(' ');
+	}
 	if (useColor && !levelInfo.color.empty()) {
 		buffer.Append(levelInfo.color);
 	}
