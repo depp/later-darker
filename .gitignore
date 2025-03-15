@@ -10,3 +10,6 @@
 # Clangd.
 /.cache/
 /.clangd
+
+# Xcode.
+xcuserdata
