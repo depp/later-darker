@@ -6,14 +6,175 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		3838BFD12D852CC9005C6677 /* scene_triangle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFC62D852CC9005C6677 /* scene_triangle.cpp */; };
+		3838BFD22D852CC9005C6677 /* os_file_unix.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFBD2D852CC9005C6677 /* os_file_unix.cpp */; };
+		3838BFD32D852CC9005C6677 /* gl_debug.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFB22D852CC9005C6677 /* gl_debug.cpp */; };
+		3838BFD42D852CC9005C6677 /* os_unix.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFC22D852CC9005C6677 /* os_unix.cpp */; };
+		3838BFD52D852CC9005C6677 /* log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFB62D852CC9005C6677 /* log.cpp */; };
+		3838BFD72D852CC9005C6677 /* gl_shader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFB42D852CC9005C6677 /* gl_shader.cpp */; };
+		3838BFD82D852CC9005C6677 /* var.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFCD2D852CC9005C6677 /* var.cpp */; };
+		3838BFD92D852CC9005C6677 /* log_unix.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFB82D852CC9005C6677 /* log_unix.cpp */; };
+		3838BFDB2D852CC9005C6677 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFBB2D852CC9005C6677 /* main.cpp */; };
+		3838BFDC2D852CC9005C6677 /* os_string.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFC02D852CC9005C6677 /* os_string.cpp */; };
+		3838BFDD2D852CC9005C6677 /* text_unicode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFCA2D852CC9005C6677 /* text_unicode.cpp */; };
+		3838BFDF2D852CC9005C6677 /* text_buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3838BFC82D852CC9005C6677 /* text_buffer.cpp */; };
+		3838BFE42D85325D005C6677 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3838BFE32D85325D005C6677 /* OpenGL.framework */; };
+		3838BFE62D853277005C6677 /* libglfw.3.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 3838BFE52D853277005C6677 /* libglfw.3.4.dylib */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		3838BF9F2D851B4F005C6677 /* later-darker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "later-darker.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		3838BFB02D852CC9005C6677 /* gl.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = gl.hpp; sourceTree = "<group>"; };
+		3838BFB12D852CC9005C6677 /* gl_debug.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = gl_debug.hpp; sourceTree = "<group>"; };
+		3838BFB22D852CC9005C6677 /* gl_debug.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gl_debug.cpp; sourceTree = "<group>"; };
+		3838BFB32D852CC9005C6677 /* gl_shader.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = gl_shader.hpp; sourceTree = "<group>"; };
+		3838BFB42D852CC9005C6677 /* gl_shader.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gl_shader.cpp; sourceTree = "<group>"; };
+		3838BFB52D852CC9005C6677 /* log.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = log.hpp; sourceTree = "<group>"; };
+		3838BFB62D852CC9005C6677 /* log.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = log.cpp; sourceTree = "<group>"; };
+		3838BFB72D852CC9005C6677 /* log_internal.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = log_internal.hpp; sourceTree = "<group>"; };
+		3838BFB82D852CC9005C6677 /* log_unix.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = log_unix.cpp; sourceTree = "<group>"; };
+		3838BFB92D852CC9005C6677 /* log_windows.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = log_windows.cpp; sourceTree = "<group>"; };
+		3838BFBA2D852CC9005C6677 /* main.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = main.hpp; sourceTree = "<group>"; };
+		3838BFBB2D852CC9005C6677 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		3838BFBC2D852CC9005C6677 /* os_file.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = os_file.hpp; sourceTree = "<group>"; };
+		3838BFBD2D852CC9005C6677 /* os_file_unix.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = os_file_unix.cpp; sourceTree = "<group>"; };
+		3838BFBE2D852CC9005C6677 /* os_file_windows.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = os_file_windows.cpp; sourceTree = "<group>"; };
+		3838BFBF2D852CC9005C6677 /* os_string.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = os_string.hpp; sourceTree = "<group>"; };
+		3838BFC02D852CC9005C6677 /* os_string.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = os_string.cpp; sourceTree = "<group>"; };
+		3838BFC12D852CC9005C6677 /* os_unix.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = os_unix.hpp; sourceTree = "<group>"; };
+		3838BFC22D852CC9005C6677 /* os_unix.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = os_unix.cpp; sourceTree = "<group>"; };
+		3838BFC32D852CC9005C6677 /* os_windows.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = os_windows.hpp; sourceTree = "<group>"; };
+		3838BFC42D852CC9005C6677 /* os_windows.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = os_windows.cpp; sourceTree = "<group>"; };
+		3838BFC52D852CC9005C6677 /* scene_triangle.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = scene_triangle.hpp; sourceTree = "<group>"; };
+		3838BFC62D852CC9005C6677 /* scene_triangle.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = scene_triangle.cpp; sourceTree = "<group>"; };
+		3838BFC72D852CC9005C6677 /* text_buffer.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = text_buffer.hpp; sourceTree = "<group>"; };
+		3838BFC82D852CC9005C6677 /* text_buffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = text_buffer.cpp; sourceTree = "<group>"; };
+		3838BFC92D852CC9005C6677 /* text_unicode.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = text_unicode.hpp; sourceTree = "<group>"; };
+		3838BFCA2D852CC9005C6677 /* text_unicode.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = text_unicode.cpp; sourceTree = "<group>"; };
+		3838BFCB2D852CC9005C6677 /* util.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = util.hpp; sourceTree = "<group>"; };
+		3838BFCC2D852CC9005C6677 /* var.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = var.hpp; sourceTree = "<group>"; };
+		3838BFCD2D852CC9005C6677 /* var.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = var.cpp; sourceTree = "<group>"; };
+		3838BFCE2D852CC9005C6677 /* wide_text_buffer.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = wide_text_buffer.hpp; sourceTree = "<group>"; };
+		3838BFCF2D852CC9005C6677 /* wide_text_buffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = wide_text_buffer.cpp; sourceTree = "<group>"; };
+		3838BFE32D85325D005C6677 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
+		3838BFE52D853277005C6677 /* libglfw.3.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglfw.3.4.dylib; path = ../../../../opt/homebrew/Cellar/glfw/3.4/lib/libglfw.3.4.dylib; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		3838BFA12D851B4F005C6677 /* macos */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = macos;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3838BF9C2D851B4F005C6677 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3838BFE42D85325D005C6677 /* OpenGL.framework in Frameworks */,
+				3838BFE62D853277005C6677 /* libglfw.3.4.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
 		3838BF942D851ABC005C6677 = {
 			isa = PBXGroup;
 			children = (
+				3838BFD02D852CC9005C6677 /* src */,
+				3838BFA12D851B4F005C6677 /* macos */,
+				3838BFE22D85325D005C6677 /* Frameworks */,
+				3838BFA02D851B4F005C6677 /* Products */,
 			);
+			sourceTree = "<group>";
+			usesTabs = 1;
+		};
+		3838BFA02D851B4F005C6677 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3838BF9F2D851B4F005C6677 /* later-darker.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		3838BFD02D852CC9005C6677 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				3838BFB02D852CC9005C6677 /* gl.hpp */,
+				3838BFB12D852CC9005C6677 /* gl_debug.hpp */,
+				3838BFB22D852CC9005C6677 /* gl_debug.cpp */,
+				3838BFB32D852CC9005C6677 /* gl_shader.hpp */,
+				3838BFB42D852CC9005C6677 /* gl_shader.cpp */,
+				3838BFB52D852CC9005C6677 /* log.hpp */,
+				3838BFB62D852CC9005C6677 /* log.cpp */,
+				3838BFB72D852CC9005C6677 /* log_internal.hpp */,
+				3838BFB82D852CC9005C6677 /* log_unix.cpp */,
+				3838BFB92D852CC9005C6677 /* log_windows.cpp */,
+				3838BFBA2D852CC9005C6677 /* main.hpp */,
+				3838BFBB2D852CC9005C6677 /* main.cpp */,
+				3838BFBC2D852CC9005C6677 /* os_file.hpp */,
+				3838BFBD2D852CC9005C6677 /* os_file_unix.cpp */,
+				3838BFBE2D852CC9005C6677 /* os_file_windows.cpp */,
+				3838BFBF2D852CC9005C6677 /* os_string.hpp */,
+				3838BFC02D852CC9005C6677 /* os_string.cpp */,
+				3838BFC12D852CC9005C6677 /* os_unix.hpp */,
+				3838BFC22D852CC9005C6677 /* os_unix.cpp */,
+				3838BFC32D852CC9005C6677 /* os_windows.hpp */,
+				3838BFC42D852CC9005C6677 /* os_windows.cpp */,
+				3838BFC52D852CC9005C6677 /* scene_triangle.hpp */,
+				3838BFC62D852CC9005C6677 /* scene_triangle.cpp */,
+				3838BFC72D852CC9005C6677 /* text_buffer.hpp */,
+				3838BFC82D852CC9005C6677 /* text_buffer.cpp */,
+				3838BFC92D852CC9005C6677 /* text_unicode.hpp */,
+				3838BFCA2D852CC9005C6677 /* text_unicode.cpp */,
+				3838BFCB2D852CC9005C6677 /* util.hpp */,
+				3838BFCC2D852CC9005C6677 /* var.hpp */,
+				3838BFCD2D852CC9005C6677 /* var.cpp */,
+				3838BFCE2D852CC9005C6677 /* wide_text_buffer.hpp */,
+				3838BFCF2D852CC9005C6677 /* wide_text_buffer.cpp */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		3838BFE22D85325D005C6677 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				3838BFE52D853277005C6677 /* libglfw.3.4.dylib */,
+				3838BFE32D85325D005C6677 /* OpenGL.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3838BF9E2D851B4F005C6677 /* later-darker */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3838BFAF2D851B50005C6677 /* Build configuration list for PBXNativeTarget "later-darker" */;
+			buildPhases = (
+				3838BF9B2D851B4F005C6677 /* Sources */,
+				3838BF9C2D851B4F005C6677 /* Frameworks */,
+				3838BF9D2D851B4F005C6677 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				3838BFA12D851B4F005C6677 /* macos */,
+			);
+			name = "later-darker";
+			packageProductDependencies = (
+			);
+			productName = "later-darker";
+			productReference = 3838BF9F2D851B4F005C6677 /* later-darker.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
 		3838BF952D851ABC005C6677 /* Project object */ = {
@@ -21,6 +182,11 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastUpgradeCheck = 1620;
+				TargetAttributes = {
+					3838BF9E2D851B4F005C6677 = {
+						CreatedOnToolsVersion = 16.2;
+					};
+				};
 			};
 			buildConfigurationList = 3838BF982D851ABC005C6677 /* Build configuration list for PBXProject "later-darker" */;
 			developmentRegion = en;
@@ -32,23 +198,210 @@
 			mainGroup = 3838BF942D851ABC005C6677;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
+			productRefGroup = 3838BFA02D851B4F005C6677 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				3838BF9E2D851B4F005C6677 /* later-darker */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3838BF9D2D851B4F005C6677 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3838BF9B2D851B4F005C6677 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3838BFD32D852CC9005C6677 /* gl_debug.cpp in Sources */,
+				3838BFD72D852CC9005C6677 /* gl_shader.cpp in Sources */,
+				3838BFD52D852CC9005C6677 /* log.cpp in Sources */,
+				3838BFD92D852CC9005C6677 /* log_unix.cpp in Sources */,
+				3838BFDB2D852CC9005C6677 /* main.cpp in Sources */,
+				3838BFD22D852CC9005C6677 /* os_file_unix.cpp in Sources */,
+				3838BFDC2D852CC9005C6677 /* os_string.cpp in Sources */,
+				3838BFD42D852CC9005C6677 /* os_unix.cpp in Sources */,
+				3838BFD12D852CC9005C6677 /* scene_triangle.cpp in Sources */,
+				3838BFDF2D852CC9005C6677 /* text_buffer.cpp in Sources */,
+				3838BFDD2D852CC9005C6677 /* text_unicode.cpp in Sources */,
+				3838BFD82D852CC9005C6677 /* var.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
 		3838BF992D851ABC005C6677 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/glfw/3.4/include;
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/Cellar/glfw/3.4/lib;
 			};
 			name = Debug;
 		};
 		3838BF9A2D851ABC005C6677 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/glfw/3.4/include;
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/Cellar/glfw/3.4/lib;
+			};
+			name = Release;
+		};
+		3838BFAD2D851B50005C6677 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = macos/later_darker.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Dietrich Epp";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "us.moria.later-darker";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		3838BFAE2D851B50005C6677 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = macos/later_darker.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 Dietrich Epp";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "us.moria.later-darker";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Release;
 		};
@@ -60,6 +413,15 @@
 			buildConfigurations = (
 				3838BF992D851ABC005C6677 /* Debug */,
 				3838BF9A2D851ABC005C6677 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3838BFAF2D851B50005C6677 /* Build configuration list for PBXNativeTarget "later-darker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3838BFAD2D851B50005C6677 /* Debug */,
+				3838BFAE2D851B50005C6677 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
