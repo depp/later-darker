@@ -20,7 +20,7 @@ class Record;
 constexpr std::size_t LogBufferSize = 256;
 
 // Write a record as a single line.
-void WriteLine(TextBuffer &buffer, const Record &record);
+void WriteLine(TextBuffer &buffer, const Record &record, bool useColor);
 
 // Write a record as a multi-line block.
 void WriteBlock(TextBuffer &buffer, const Record &record);

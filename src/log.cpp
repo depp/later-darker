@@ -131,11 +131,13 @@ void AppendValue(TextBuffer &out, const Value &value, Context context) {
 
 } // namespace
 
-void WriteLine(TextBuffer &buffer, const Record &record) {
+void WriteLine(TextBuffer &buffer, const Record &record, bool useColor) {
 	const LevelInfo &levelInfo = GetLevelInfo(record.level());
-	buffer.Append(levelInfo.color);
+	if (useColor && !levelInfo.color.empty()) {
+		buffer.Append(levelInfo.color);
+	}
 	buffer.Append(levelInfo.name);
-	if (!levelInfo.color.empty()) {
+	if (useColor && !levelInfo.color.empty()) {
 		buffer.Append("\x1b[0m");
 	}
 	buffer.AppendChar(' ');

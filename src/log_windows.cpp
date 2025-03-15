@@ -50,7 +50,7 @@ void WindowsWriter::Log(const Record &record) {
 	}
 
 	mBuffer.Clear();
-	WriteLine(mBuffer, record);
+	WriteLine(mBuffer, record, true);
 
 	mWideBuffer.Clear();
 	mWideBuffer.AppendMultiByte(mBuffer.Contents());
