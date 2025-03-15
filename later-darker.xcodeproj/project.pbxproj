@@ -34,18 +34,14 @@
 		3838BFB62D852CC9005C6677 /* log.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = log.cpp; sourceTree = "<group>"; };
 		3838BFB72D852CC9005C6677 /* log_internal.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = log_internal.hpp; sourceTree = "<group>"; };
 		3838BFB82D852CC9005C6677 /* log_unix.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = log_unix.cpp; sourceTree = "<group>"; };
-		3838BFB92D852CC9005C6677 /* log_windows.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = log_windows.cpp; sourceTree = "<group>"; };
 		3838BFBA2D852CC9005C6677 /* main.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = main.hpp; sourceTree = "<group>"; };
 		3838BFBB2D852CC9005C6677 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		3838BFBC2D852CC9005C6677 /* os_file.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = os_file.hpp; sourceTree = "<group>"; };
 		3838BFBD2D852CC9005C6677 /* os_file_unix.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = os_file_unix.cpp; sourceTree = "<group>"; };
-		3838BFBE2D852CC9005C6677 /* os_file_windows.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = os_file_windows.cpp; sourceTree = "<group>"; };
 		3838BFBF2D852CC9005C6677 /* os_string.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = os_string.hpp; sourceTree = "<group>"; };
 		3838BFC02D852CC9005C6677 /* os_string.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = os_string.cpp; sourceTree = "<group>"; };
 		3838BFC12D852CC9005C6677 /* os_unix.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = os_unix.hpp; sourceTree = "<group>"; };
 		3838BFC22D852CC9005C6677 /* os_unix.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = os_unix.cpp; sourceTree = "<group>"; };
-		3838BFC32D852CC9005C6677 /* os_windows.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = os_windows.hpp; sourceTree = "<group>"; };
-		3838BFC42D852CC9005C6677 /* os_windows.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = os_windows.cpp; sourceTree = "<group>"; };
 		3838BFC52D852CC9005C6677 /* scene_triangle.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = scene_triangle.hpp; sourceTree = "<group>"; };
 		3838BFC62D852CC9005C6677 /* scene_triangle.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = scene_triangle.cpp; sourceTree = "<group>"; };
 		3838BFC72D852CC9005C6677 /* text_buffer.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = text_buffer.hpp; sourceTree = "<group>"; };
@@ -55,8 +51,6 @@
 		3838BFCB2D852CC9005C6677 /* util.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = util.hpp; sourceTree = "<group>"; };
 		3838BFCC2D852CC9005C6677 /* var.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = var.hpp; sourceTree = "<group>"; };
 		3838BFCD2D852CC9005C6677 /* var.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = var.cpp; sourceTree = "<group>"; };
-		3838BFCE2D852CC9005C6677 /* wide_text_buffer.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = wide_text_buffer.hpp; sourceTree = "<group>"; };
-		3838BFCF2D852CC9005C6677 /* wide_text_buffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = wide_text_buffer.cpp; sourceTree = "<group>"; };
 		3838BFE32D85325D005C6677 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		3838BFE52D853277005C6677 /* libglfw.3.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglfw.3.4.dylib; path = ../../../../opt/homebrew/Cellar/glfw/3.4/lib/libglfw.3.4.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -113,18 +107,14 @@
 				3838BFB62D852CC9005C6677 /* log.cpp */,
 				3838BFB72D852CC9005C6677 /* log_internal.hpp */,
 				3838BFB82D852CC9005C6677 /* log_unix.cpp */,
-				3838BFB92D852CC9005C6677 /* log_windows.cpp */,
 				3838BFBA2D852CC9005C6677 /* main.hpp */,
 				3838BFBB2D852CC9005C6677 /* main.cpp */,
 				3838BFBC2D852CC9005C6677 /* os_file.hpp */,
 				3838BFBD2D852CC9005C6677 /* os_file_unix.cpp */,
-				3838BFBE2D852CC9005C6677 /* os_file_windows.cpp */,
 				3838BFBF2D852CC9005C6677 /* os_string.hpp */,
 				3838BFC02D852CC9005C6677 /* os_string.cpp */,
 				3838BFC12D852CC9005C6677 /* os_unix.hpp */,
 				3838BFC22D852CC9005C6677 /* os_unix.cpp */,
-				3838BFC32D852CC9005C6677 /* os_windows.hpp */,
-				3838BFC42D852CC9005C6677 /* os_windows.cpp */,
 				3838BFC52D852CC9005C6677 /* scene_triangle.hpp */,
 				3838BFC62D852CC9005C6677 /* scene_triangle.cpp */,
 				3838BFC72D852CC9005C6677 /* text_buffer.hpp */,
@@ -134,8 +124,6 @@
 				3838BFCB2D852CC9005C6677 /* util.hpp */,
 				3838BFCC2D852CC9005C6677 /* var.hpp */,
 				3838BFCD2D852CC9005C6677 /* var.cpp */,
-				3838BFCE2D852CC9005C6677 /* wide_text_buffer.hpp */,
-				3838BFCF2D852CC9005C6677 /* wide_text_buffer.cpp */,
 			);
 			path = src;
 			sourceTree = "<group>";
