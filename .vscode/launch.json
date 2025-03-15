@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/out/build/macos-debug/later-darker",
+      "args": ["ProjectPath=${workspaceFolder}"],
+      "cwd": "${workspaceFolder}",
+      "MIMode": "lldb"
+    }
+  ]
+}
