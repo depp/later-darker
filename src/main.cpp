@@ -17,6 +17,8 @@
 namespace demo {
 namespace {
 
+#if !COMPO
+
 // Information about GLFW errors to add to log messages.
 class GLFWErrorInfo {
 public:
@@ -52,7 +54,10 @@ extern "C" void ErrorCallback(int error, const char *description) {
 		.Log();
 }
 
+#endif
+
 void Main() {
+#if !COMPO
 	log::Init();
 	/*
 	DumpEnv();
@@ -62,6 +67,7 @@ void Main() {
 	*/
 
 	glfwSetErrorCallback(ErrorCallback);
+#endif
 	if (!glfwInit()) {
 		FAIL_GLFW("Could not initialize GLFW.");
 	}
@@ -85,9 +91,11 @@ void Main() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 
+#if !COMPO
 	if (var::DebugContext) {
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 	}
+#endif
 
 	GLFWwindow *window =
 		glfwCreateWindow(640, 480, "Later, Darker", nullptr, nullptr);
@@ -99,9 +107,11 @@ void Main() {
 #if _WIN32
 	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
 #endif
+#if !COMPO
 	if (var::DebugContext) {
 		gl_debug::Init();
 	}
+#endif
 	gl_shader::Init();
 	scene::Cube scene;
 	scene.Init();
@@ -128,7 +138,25 @@ void Main() {
 } // namespace
 } // namespace demo
 
-#if _WIN32
+#if COMPO
+
+// ============================================================================
+// Competition Build
+// ============================================================================
+
+#include "os_windows.hpp"
+
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
+                    _In_ LPWSTR lpCmdLine, _In_ int nShowCmd) {
+	(void)hInstance;
+	(void)hPrevInstance;
+	(void)lpCmdLine;
+	(void)nShowCmd;
+	demo::Main();
+	return 0;
+}
+
+#elif _WIN32
 
 // ============================================================================
 // Windows

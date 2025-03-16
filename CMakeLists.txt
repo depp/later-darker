@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.30)
 project(later-darker)
 
+# =============================================================================
+# Dependencies
+# =============================================================================
+
 set(USE_GLAD 1)
 if(APPLE)
 	set(USE_GLAD 0)
 endif()
-
-# =============================================================================
 
 # This is for GLAD, and it allows GLAD to use a virtualenv Python if found
 # first, which means that GLAD can find jinja2 in such an environment.
@@ -28,8 +30,16 @@ endif()
 
 FetchContent_MakeAvailable(${FETCH_PKGS})
 
+# =============================================================================
+# Common Settings
+# =============================================================================
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+# =============================================================================
+# Main Build
+# =============================================================================
 
 add_executable(later-darker WIN32
 	"src/gl_debug.cpp"
@@ -80,4 +90,20 @@ if(USE_GLAD)
 	add_subdirectory("${glad_SOURCE_DIR}/cmake" glad_cmake)
 	glad_add_library(glad_gl33 SHARED REPRODUCIBLE API gl:core=3.3 EXTENSIONS GL_KHR_debug)
 	target_link_libraries(later-darker PRIVATE glad_gl33)
+endif()
+
+# =============================================================================
+# Competition Build
+# =============================================================================
+
+if(WIN32)
+	add_executable(later-darker-compo WIN32
+		"src/gl_shader.cpp"
+		"src/main.cpp"
+		"src/os_file_windows.cpp"
+		"src/scene_cube.cpp"
+		"src/scene_triangle.cpp"
+	)
+	target_compile_definitions(later-darker-compo PRIVATE COMPO)
+	target_link_libraries(later-darker-compo PRIVATE glfw glm::glm glad_gl33)
 endif()

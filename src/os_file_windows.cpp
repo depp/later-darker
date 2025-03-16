@@ -5,25 +5,17 @@
 
 #include "log.hpp"
 #include "os_windows.hpp"
-#include "var.hpp"
 
 namespace demo {
-
 namespace {
 
 // Limit on maximum file size when reading files into memory.
 constexpr std::size_t MaxFileSize = 64 * 1024 * 1024;
 
-} // namespace
-
-bool ReadFile(std::vector<unsigned char> *data, std::string_view fileName) {
-	if (var::ProjectPath.empty()) {
-		FAIL("Project path is not set.");
-	}
-	std::wstring path{var::ProjectPath};
-	AppendPath(&path, fileName);
-	HANDLE h = CreateFileW(path.c_str(), FILE_READ_DATA, FILE_SHARE_READ,
-	                       nullptr, OPEN_EXISTING, 0, nullptr);
+bool ReadFileImpl(std::vector<unsigned char> *data, std::string_view fileName,
+                  const wchar_t *fullPath) {
+	HANDLE h = CreateFileW(fullPath, FILE_READ_DATA, FILE_SHARE_READ, nullptr,
+	                       OPEN_EXISTING, 0, nullptr);
 	if (h == INVALID_HANDLE_VALUE) {
 		LOG(Error, "Could not open file.", log::Attr{"file", fileName},
 		    WindowsError::GetLast());
@@ -55,4 +47,45 @@ bool ReadFile(std::vector<unsigned char> *data, std::string_view fileName) {
 	return true;
 }
 
+} // namespace
 } // namespace demo
+
+#if COMPO
+
+#include <array>
+
+namespace demo {
+
+bool ReadFile(std::vector<unsigned char> *data, std::string_view fileName) {
+	constexpr std::size_t size = 128;
+	wchar_t buffer[size];
+	int count = MultiByteToWideChar(CP_UTF8, 0, fileName.data(),
+	                                static_cast<int>(fileName.size()), buffer,
+	                                std::size(buffer) - 1);
+	if (count == 0) {
+		FAIL("Character conversion failed.");
+	}
+	buffer[count] = L'\0';
+	return ReadFileImpl(data, fileName, buffer);
+}
+
+} // namespace demo
+
+#else
+
+#include "var.hpp"
+
+namespace demo {
+
+bool ReadFile(std::vector<unsigned char> *data, std::string_view fileName) {
+	if (var::ProjectPath.empty()) {
+		FAIL("Project path is not set.");
+	}
+	std::wstring path{var::ProjectPath};
+	AppendPath(&path, fileName);
+	return ReadFileImpl(data, fileName, path.c_str());
+}
+
+} // namespace demo
+
+#endif

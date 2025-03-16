@@ -5,6 +5,27 @@
 
 // Entry points for logging. This is modeled after Go's log/slog package.
 
+#if COMPO
+
+// ============================================================================
+// Competition Build
+// ============================================================================
+
+#include <intrin.h>
+
+// 7 = FAST_FAIL_FATAL_APP_EXIT
+#define FAIL_IMPL() __fastfail(7)
+#define LOG(level, ...) (void)0
+#define CHECK(condition) (void)((!!(condition)) || (FAIL_IMPL(), 0))
+#define FAIL(...) FAIL_IMPL()
+#define FAIL_ALLOC(size) FAIL_IMPL()
+
+#else
+
+// ============================================================================
+// Standard Build
+// ============================================================================
+
 #include "log_standard.hpp"
 
 /// <summary>
@@ -58,3 +79,5 @@
 /// Show an error message for a memory allocation failure and exit the program.
 /// </summary>
 #define FAIL_ALLOC(size) ::demo::log::FailAlloc(LOG_LOCATION, size)
+
+#endif
