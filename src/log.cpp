@@ -4,6 +4,7 @@
 #include "log.hpp"
 
 #include "log_internal.hpp"
+#include "main.hpp"
 #include "text_buffer.hpp"
 
 #include <string_view>
@@ -195,8 +196,20 @@ void Record::Fail() const {
 	writer.Fail(*this);
 }
 
+namespace {
+
+thread_local bool IsInFailAlloc;
+
+}
+
 [[noreturn]]
 void FailAlloc(Location location, std::size_t size) {
+	// Avoid recursive calls to FailAlloc.
+	if (IsInFailAlloc) {
+		ExitError();
+	}
+	IsInFailAlloc = true;
+
 	Record record{Level::Error, location, "Memory allocation failed."};
 	record.Add("size", size);
 	record.Fail();
