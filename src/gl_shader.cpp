@@ -67,6 +67,8 @@ GLuint LinkProgram(GLuint vertex, GLuint fragment) {
 } // namespace
 
 GLuint Program;
+GLuint CubeProgram;
+GLint MVP;
 
 void Init() {
 	GLuint vertex = CompileShader(GL_VERTEX_SHADER, "triangle.vert");
@@ -75,6 +77,14 @@ void Init() {
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
 	Program = program;
+
+	vertex = CompileShader(GL_VERTEX_SHADER, "cube.vert");
+	fragment = CompileShader(GL_FRAGMENT_SHADER, "cube.frag");
+	program = LinkProgram(vertex, fragment);
+	glDeleteShader(vertex);
+	glDeleteShader(fragment);
+	CubeProgram = program;
+	MVP = glGetUniformLocation(program, "MVP");
 }
 
 } // namespace gl_shader

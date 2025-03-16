@@ -9,6 +9,8 @@ namespace demo {
 namespace gl_shader {
 
 extern GLuint Program;
+extern GLuint CubeProgram;
+extern GLint MVP;
 
 // Compile all OpenGL shader programs.
 void Init();

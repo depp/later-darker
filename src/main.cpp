@@ -7,7 +7,7 @@
 #include "gl_debug.hpp"
 #include "gl_shader.hpp"
 #include "log.hpp"
-#include "scene_triangle.hpp"
+#include "scene_cube.hpp"
 #include "var.hpp"
 
 #include <GLFW/glfw3.h>
@@ -103,7 +103,7 @@ void Main() {
 		gl_debug::Init();
 	}
 	gl_shader::Init();
-	scene::Triangle scene;
+	scene::Cube scene;
 	scene.Init();
 
 	glfwSwapInterval(1);

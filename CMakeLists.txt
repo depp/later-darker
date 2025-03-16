@@ -37,6 +37,7 @@ add_executable(later-darker WIN32
 	"src/log.cpp"
 	"src/main.cpp"
 	"src/os_string.cpp"
+	"src/scene_cube.cpp"
 	"src/scene_triangle.cpp"
 	"src/text_buffer.cpp"
 	"src/text_unicode.cpp"
@@ -67,6 +68,9 @@ endif()
 
 find_package(glfw3 CONFIG REQUIRED)
 target_link_libraries(later-darker PRIVATE glfw)
+
+find_package(glm CONFIG REQUIRED)
+target_link_libraries(later-darker PRIVATE glm::glm)
 
 if(APPLE)
 	target_link_libraries(later-darker PRIVATE "-framework OpenGL")
