@@ -34,7 +34,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 add_executable(later-darker WIN32
 	"src/gl_debug.cpp"
 	"src/gl_shader.cpp"
-	"src/log.cpp"
+	"src/log_standard.cpp"
 	"src/main.cpp"
 	"src/os_string.cpp"
 	"src/scene_cube.cpp"
