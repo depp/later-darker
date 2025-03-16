@@ -23,7 +23,7 @@ HANDLE ConsoleHandle;
 } // namespace
 
 bool WindowsWriter::Init() {
-	if (!var::AllocConsole) {
+	if (!var::AllocConsole.get()) {
 		return false;
 	}
 	BOOL ok = AllocConsole();

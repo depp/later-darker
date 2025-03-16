@@ -11,9 +11,9 @@ namespace demo {
 
 namespace var {
 
-bool DebugContext;
-bool AllocConsole;
-os_string ProjectPath;
+#define DEFVAR(name, type, description) Var<type> name;
+#include "var_def.hpp"
+#undef DEFVAR
 
 } // namespace var
 
@@ -63,18 +63,19 @@ enum class Kind {
 // Definition for a configuration variable.
 class VarDefinition {
 public:
-	constexpr VarDefinition(std::string_view name, bool *value)
+	constexpr VarDefinition(std::string_view name, var::Var<bool> *value)
 		: mName{name}, mKind{Kind::Bool} {
-		mData.boolValue = value;
+		mData.boolVar = value;
 	}
-	constexpr VarDefinition(std::string_view name, std::string *value)
+	constexpr VarDefinition(std::string_view name, var::Var<std::string> *value)
 		: mName{name}, mKind{Kind::String} {
-		mData.stringValue = value;
+		mData.stringVar = value;
 	}
 #if _WIN32
-	constexpr VarDefinition(std::string_view name, std::wstring *value)
+	constexpr VarDefinition(std::string_view name,
+	                        var::Var<std::wstring> *value)
 		: mName{name}, mKind{Kind::WideString} {
-		mData.wideStringValue = value;
+		mData.wideStringVar = value;
 	}
 #endif
 
@@ -88,10 +89,10 @@ public:
 				FAIL("Invalid boolean.", log::Attr{"var", mName},
 				     log::Attr{"value", string});
 			}
-			*mData.boolValue = *parsed;
+			mData.boolVar->set(*parsed);
 		} break;
 		case Kind::String:
-			mData.stringValue->assign(string);
+			mData.stringVar->set(string);
 			break;
 		default:
 			FAIL("Unsupported variable kind.");
@@ -101,7 +102,7 @@ public:
 #if _WIN32
 	void Set(std::wstring_view string) const {
 		if (mKind == Kind::WideString) {
-			mData.wideStringValue->assign(string);
+			mData.wideStringVar->set(string);
 		} else {
 			Set(ToString(string));
 		}
@@ -112,16 +113,16 @@ private:
 	std::string_view mName;
 	Kind mKind;
 	union {
-		bool *boolValue;
-		std::string *stringValue;
-		std::wstring *wideStringValue;
+		var::Var<bool> *boolVar;
+		var::Var<std::string> *stringVar;
+		var::Var<std::wstring> *wideStringVar;
 	} mData;
 };
 
 const VarDefinition VarDefinitions[] = {
-	{"DebugContext", &var::DebugContext},
-	{"AllocConsole", &var::AllocConsole},
-	{"ProjectPath", &var::ProjectPath},
+#define DEFVAR(name, type, description) {#name, &var::name},
+#include "var_def.hpp"
+#undef DEFVAR
 };
 
 const VarDefinition *LookupVar(std::string_view name) {

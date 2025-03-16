@@ -92,7 +92,7 @@ void Main() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 
 #if !COMPO
-	if (var::DebugContext) {
+	if (var::DebugContext.get()) {
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 	}
 #endif
@@ -108,7 +108,7 @@ void Main() {
 	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
 #endif
 #if !COMPO
-	if (var::DebugContext) {
+	if (var::DebugContext.get()) {
 		gl_debug::Init();
 	}
 #endif

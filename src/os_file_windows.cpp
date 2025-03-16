@@ -78,10 +78,10 @@ bool ReadFile(std::vector<unsigned char> *data, std::string_view fileName) {
 namespace demo {
 
 bool ReadFile(std::vector<unsigned char> *data, std::string_view fileName) {
-	if (var::ProjectPath.empty()) {
+	std::wstring path{var::ProjectPath.get()};
+	if (path.empty()) {
 		FAIL("Project path is not set.");
 	}
-	std::wstring path{var::ProjectPath};
 	AppendPath(&path, fileName);
 	return ReadFileImpl(data, fileName, path.c_str());
 }
