@@ -247,6 +247,15 @@ inline void Attr::AddToRecord(Record &record) const {
 	record.Add(mName, mValue);
 }
 
+/// <summary>
+/// Report a memory allocation failure and exit the program. This is normally
+/// called from the <see cref="FAIL_ALLOC"/> macro.
+/// </summary>
+/// <param name="location">Source code location where the failure
+/// occurred.</param> <param name="size">Size of allocation that failed.</param>
+[[noreturn]]
+void FailAlloc(Location location, std::size_t size);
+
 } // namespace log
 } // namespace demo
 
@@ -301,3 +310,8 @@ inline void Attr::AddToRecord(Record &record) const {
 #define FAIL(...) \
 	::demo::log::Record{::demo::log::Level::Error, LOG_LOCATION, __VA_ARGS__} \
 		.Fail()
+
+/// <summary>
+/// Show an error message for a memory allocation failure and exit the program.
+/// </summary>
+#define FAIL_ALLOC(size) ::demo::log::FailAlloc(LOG_LOCATION, size)

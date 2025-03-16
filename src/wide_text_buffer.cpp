@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "wide_text_buffer.hpp"
 
+#include "log.hpp"
 #include "os_windows.hpp"
 #include "util.hpp"
 
@@ -31,9 +32,7 @@ void WideTextBuffer::AppendMultiByte(std::string_view data) {
 		Reserve(data.size());
 		mPos = std::copy(data.data(), data.data() + data.size(), mPos);
 	} else {
-		if (data.size() > std::numeric_limits<int>::max()) {
-			std::abort();
-		}
+		CHECK(data.size() <= std::numeric_limits<int>::max());
 		int nChars = static_cast<int>(data.size());
 		int nWideChars =
 			MultiByteToWideChar(CP_UTF8, 0, data.data(), nChars, nullptr, 0);
@@ -67,18 +66,17 @@ void WideTextBuffer::Reserve(std::size_t size) {
 
 void WideTextBuffer::Reallocate(std::size_t newCapacity) {
 	std::ptrdiff_t offset = mPos - mStart;
+	std::size_t size = newCapacity * sizeof(wchar_t);
 	wchar_t *ptr;
 	if (mIsDynamic) {
-		ptr = static_cast<wchar_t *>(
-			std::realloc(mStart, newCapacity * sizeof(wchar_t)));
+		ptr = static_cast<wchar_t *>(std::realloc(mStart, size));
 		if (ptr == nullptr) {
-			std::abort();
+			FAIL_ALLOC(size);
 		}
 	} else {
-		ptr =
-			static_cast<wchar_t *>(std::malloc(newCapacity * sizeof(wchar_t)));
+		ptr = static_cast<wchar_t *>(std::malloc(size));
 		if (ptr == nullptr) {
-			std::abort();
+			FAIL_ALLOC(size);
 		}
 		if (offset > 0) {
 			std::memcpy(ptr, mStart, offset * sizeof(wchar_t));

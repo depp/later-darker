@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "text_buffer.hpp"
 
+#include "log.hpp"
 #include "text_unicode.hpp"
 #include "util.hpp"
 
@@ -267,12 +268,12 @@ void TextBuffer::Reallocate(std::size_t newCapacity) {
 	if (mIsDynamic) {
 		ptr = static_cast<char *>(std::realloc(mStart, newCapacity));
 		if (ptr == nullptr) {
-			std::abort();
+			FAIL_ALLOC(newCapacity);
 		}
 	} else {
 		ptr = static_cast<char *>(std::malloc(newCapacity));
 		if (ptr == nullptr) {
-			std::abort();
+			FAIL_ALLOC(newCapacity);
 		}
 		if (offset > 0) {
 			std::memcpy(ptr, mStart, offset);

@@ -195,5 +195,12 @@ void Record::Fail() const {
 	writer.Fail(*this);
 }
 
+[[noreturn]]
+void FailAlloc(Location location, std::size_t size) {
+	Record record{Level::Error, location, "Memory allocation failed."};
+	record.Add("size", size);
+	record.Fail();
+}
+
 } // namespace log
 } // namespace demo
