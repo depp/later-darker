@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 
 use clap::Parser;
@@ -26,6 +26,13 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     let manifest = spec.to_manifest();
     if args.dump {
         io::stderr().write_all(manifest.dump().as_bytes())?;
+    }
+
+    let directory = args.spec.parent().expect("Must have parent directory.");
+    for shader in manifest.shaders.iter() {
+        let mut path = PathBuf::from(directory);
+        path.push(Path::new(shader.name.as_ref()));
+        eprintln!("Path: {:?}", path);
     }
 
     Ok(())
