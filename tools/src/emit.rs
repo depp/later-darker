@@ -74,7 +74,7 @@ pub fn emit_shaders(out: &mut String, shaders: &[Shader]) -> Result<(), Error> {
     }
     // Get size, including null bytes.
     let size: usize = shaders.iter().map(|s| s.text.len()).sum::<usize>() + shaders.len();
-    write!(out, "const char ShaderText[{}] =\n", size).unwrap();
+    write!(out, "extern const char ShaderText[{}] =\n", size).unwrap();
     let mut writer = StringWriter::new(out);
     for (n, shader) in shaders.iter().enumerate() {
         if n != 0 {

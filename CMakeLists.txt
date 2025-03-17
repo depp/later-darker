@@ -42,6 +42,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # =============================================================================
 
 add_executable(later-darker WIN32
+	"src/gen/shader_data.cpp"
 	"src/gl_debug.cpp"
 	"src/gl_shader.cpp"
 	"src/log_standard.cpp"
@@ -98,6 +99,7 @@ endif()
 
 if(WIN32)
 	add_executable(later-darker-compo WIN32
+		"src/gen/shader_data.cpp"
 		"src/gl_shader.cpp"
 		"src/main.cpp"
 		"src/os_file_windows.cpp"

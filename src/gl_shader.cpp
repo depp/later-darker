@@ -5,8 +5,11 @@
 
 #include "log.hpp"
 #include "os_file.hpp"
+#include "var.hpp"
 
+#include <array>
 #include <cstdio>
+#include <cstring>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -14,7 +17,39 @@
 namespace demo {
 namespace gl_shader {
 
+extern const char ShaderText[];
+
 namespace {
+
+// FIXME: These are hard-coded. They should be generated.
+
+constexpr int ShaderCount = 4;
+constexpr int VertexShaderCount = 2;
+constexpr int ProgramCount = 2;
+
+struct ShaderSource {
+	const char *ptr;
+	int size;
+};
+
+void GetShaderSource(std::array<ShaderSource, ShaderCount> &source) {
+	const char *ptr = ShaderText;
+	for (auto &shader : source) {
+		std::size_t length = std::strlen(ptr);
+		shader.ptr = ptr;
+		shader.size = static_cast<int>(length);
+		ptr += length + 1;
+	}
+}
+
+struct ProgramSpec {
+	int vertex;
+	int fragment;
+};
+
+// FIXME: This is hard-coded. It should be generated.
+
+const ProgramSpec ProgramSpecs[ProgramCount] = {{0, 2}, {1, 3}};
 
 // Compile a shader from the given source code.
 GLuint CompileShader(GLenum shaderType, std::string_view fileName) {
@@ -64,13 +99,52 @@ GLuint LinkProgram(GLuint vertex, GLuint fragment) {
 	return program;
 }
 
-} // namespace
+// Compile the shaders that have been embedded into the program.
+void CompileEmbedded() {
+	std::array<ShaderSource, ShaderCount> source;
+	GetShaderSource(source);
+	std::array<GLuint, ShaderCount> shaders;
+	for (int i = 0; i < ShaderCount; i++) {
+		GLuint shader = glCreateShader(
+			i < VertexShaderCount ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER);
+		if (shader == 0) {
+			FAIL("Could not create shader.");
+		}
+		shaders[i] = shader;
+		glShaderSource(shader, 1, &source[i].ptr, &source[i].size);
+		glCompileShader(shader);
+	}
+	std::array<GLuint, ProgramCount> programs;
+	for (int i = 0; i < ProgramCount; i++) {
+		GLuint program = glCreateProgram();
+		if (program == 0) {
+			FAIL("Could not create program.");
+		}
+		programs[i] = program;
+		const ProgramSpec &spec = ProgramSpecs[i];
+		glAttachShader(program, shaders[spec.vertex]);
+		glAttachShader(program, shaders[spec.fragment]);
+		glLinkProgram(program);
 
-GLuint Program;
-GLuint CubeProgram;
-GLint MVP;
+		GLint status;
+		glGetProgramiv(program, GL_LINK_STATUS, &status);
+		if (!status) {
+			FAIL("Shader program failed to link.");
+		}
 
-void Init() {
+		glDetachShader(program, shaders[spec.vertex]);
+		glDetachShader(program, shaders[spec.fragment]);
+	}
+	for (int i = 0; i < ShaderCount; i++) {
+		glDeleteShader(shaders[i]);
+	}
+	Program = programs[0];
+	CubeProgram = programs[1];
+	MVP = glGetUniformLocation(CubeProgram, "MVP");
+}
+
+// Compile shaders from the filesystem.
+void CompileFiles() {
 	GLuint vertex = CompileShader(GL_VERTEX_SHADER, "triangle.vert");
 	GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, "triangle.frag");
 	GLuint program = LinkProgram(vertex, fragment);
@@ -84,7 +158,23 @@ void Init() {
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
 	CubeProgram = program;
-	MVP = glGetUniformLocation(program, "MVP");
+}
+
+} // namespace
+
+GLuint Program;
+GLuint CubeProgram;
+GLint MVP;
+
+void Init() {
+	os_string_view view = var::ProjectPath.get();
+	if (var::ProjectPath.get().empty()) {
+		CompileEmbedded();
+	} else {
+		CompileFiles();
+	}
+
+	MVP = glGetUniformLocation(CubeProgram, "MVP");
 }
 
 } // namespace gl_shader

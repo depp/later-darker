@@ -32,7 +32,7 @@ template <typename T>
 struct Var {
 	using Traits = VarTraits<T>;
 	using Value = typename VarTraits<T>::Value;
-	constexpr T get() { return T{}; }
+	constexpr T get() const { return T{}; }
 };
 
 #define DEFVAR(name, type, description) constexpr Var<type> name;
