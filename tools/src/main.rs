@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process;
@@ -9,6 +8,7 @@ use clap::Parser;
 mod emit;
 mod intern;
 mod parse;
+mod shader;
 mod spec;
 
 #[derive(Parser, Debug)]
@@ -31,14 +31,14 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     }
 
     let directory = args.spec.parent().expect("Must have parent directory.");
-    let mut output = String::new();
+    let mut shaders = Vec::with_capacity(manifest.shaders.len());
     for shader in manifest.shaders.iter() {
         let mut path = PathBuf::from(directory);
         path.push(Path::new(shader.name.as_ref()));
-        let shader_text = fs::read_to_string(&path)?;
-        emit::emit_string(&mut output, shader_text.as_bytes());
-        output.push_str("\n\n");
+        shaders.push(shader::Shader::read(&path)?);
     }
+    let mut output = String::new();
+    emit::emit_shaders(&mut output, &shaders)?;
     io::stdout().write_all(output.as_bytes())?;
 
     Ok(())
