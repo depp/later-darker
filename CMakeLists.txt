@@ -44,8 +44,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 add_executable(later-darker WIN32
 	"src/gen/shader_data.cpp"
 	"src/gl_debug.cpp"
-	"src/gl_shader.cpp"
 	"src/gl_shader_data.cpp"
+	"src/gl_shader_dev.cpp"
 	"src/log_standard.cpp"
 	"src/main.cpp"
 	"src/os_string.cpp"
@@ -101,10 +101,9 @@ endif()
 if(WIN32)
 	add_executable(later-darker-compo WIN32
 		"src/gen/shader_data.cpp"
-		"src/gl_shader.cpp"
+		"src/gl_shader_compo.cpp"
 		"src/gl_shader_data.cpp"
 		"src/main.cpp"
-		"src/os_file_windows.cpp"
 		"src/scene_cube.cpp"
 		"src/scene_triangle.cpp"
 	)
