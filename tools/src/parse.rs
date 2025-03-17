@@ -1,4 +1,4 @@
-use crate::spec::{Program, ShaderType};
+use crate::spec::{Program, ShaderType, Spec};
 use std::path::Path;
 use std::{error, fmt, fs, io};
 
@@ -72,7 +72,7 @@ fn parse_line(line: &str) -> Result<Option<Program>, ErrorKind> {
 }
 
 /// Parse program specs from memory.
-fn parse_spec(text: &str) -> Result<Vec<Program>, Error> {
+fn parse_spec(text: &str) -> Result<Spec, Error> {
     let mut programs: Vec<Program> = Vec::new();
     for (line, lineno) in text.lines().zip(1u32..) {
         match parse_line(line) {
@@ -81,7 +81,7 @@ fn parse_spec(text: &str) -> Result<Vec<Program>, Error> {
             Ok(Some(program)) => programs.push(program),
         }
     }
-    Ok(programs)
+    Ok(Spec { programs })
 }
 
 /// Error reading a spec.
@@ -115,7 +115,7 @@ impl From<io::Error> for ReadError {
 impl error::Error for ReadError {}
 
 /// Read program specs from a file.
-pub fn read_spec(path: &Path) -> Result<Vec<Program>, ReadError> {
+pub fn read_spec(path: &Path) -> Result<Spec, ReadError> {
     let text = fs::read_to_string(path)?;
     Ok(parse_spec(&text)?)
 }

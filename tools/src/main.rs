@@ -13,8 +13,8 @@ struct Args {
 }
 
 fn run(args: &Args) -> Result<(), Box<dyn Error>> {
-    let progs = parse::read_spec(&args.spec)?;
-    for prog in progs.iter() {
+    let spec = parse::read_spec(&args.spec)?;
+    for prog in spec.programs.iter() {
         eprintln!("Program: {:?}", prog);
     }
     Ok(())

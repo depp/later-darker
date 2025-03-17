@@ -9,6 +9,12 @@ pub struct Program {
     pub fragment: String,
 }
 
+/// A spec for all shader programs to compile and link.
+#[derive(Debug, Clone)]
+pub struct Spec {
+    pub programs: Vec<Program>,
+}
+
 /// A type of shader.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShaderType {
