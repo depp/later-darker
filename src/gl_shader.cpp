@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "gl_shader.hpp"
 
+#include "gl_shader_data.hpp"
 #include "log.hpp"
 #include "os_file.hpp"
 #include "var.hpp"
@@ -17,39 +18,7 @@
 namespace demo {
 namespace gl_shader {
 
-extern const char ShaderText[];
-
 namespace {
-
-// FIXME: These are hard-coded. They should be generated.
-
-constexpr int ShaderCount = 4;
-constexpr int VertexShaderCount = 2;
-constexpr int ProgramCount = 2;
-
-struct ShaderSource {
-	const char *ptr;
-	int size;
-};
-
-void GetShaderSource(std::array<ShaderSource, ShaderCount> &source) {
-	const char *ptr = ShaderText;
-	for (auto &shader : source) {
-		std::size_t length = std::strlen(ptr);
-		shader.ptr = ptr;
-		shader.size = static_cast<int>(length);
-		ptr += length + 1;
-	}
-}
-
-struct ProgramSpec {
-	int vertex;
-	int fragment;
-};
-
-// FIXME: This is hard-coded. It should be generated.
-
-const ProgramSpec ProgramSpecs[ProgramCount] = {{0, 2}, {1, 3}};
 
 // Compile a shader from the given source code.
 GLuint CompileShader(GLenum shaderType, std::string_view fileName) {
@@ -101,8 +70,7 @@ GLuint LinkProgram(GLuint vertex, GLuint fragment) {
 
 // Compile the shaders that have been embedded into the program.
 void CompileEmbedded() {
-	std::array<ShaderSource, ShaderCount> source;
-	GetShaderSource(source);
+	std::array<ShaderSource, ShaderCount> source = GetEmbeddedShaderSource();
 	std::array<GLuint, ShaderCount> shaders;
 	for (int i = 0; i < ShaderCount; i++) {
 		GLuint shader = glCreateShader(
