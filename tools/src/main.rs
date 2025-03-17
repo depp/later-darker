@@ -4,6 +4,7 @@ use std::process;
 
 use clap::Parser;
 
+mod intern;
 mod parse;
 mod spec;
 

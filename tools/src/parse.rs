@@ -1,3 +1,4 @@
+use crate::intern;
 use crate::spec::{Program, ShaderType, Spec};
 use std::path::Path;
 use std::{error, fmt, fs, io};
@@ -32,7 +33,7 @@ pub struct Error {
 }
 
 /// Parse a single line of program specs.
-fn parse_line(line: &str) -> Result<Option<Program>, ErrorKind> {
+fn parse_line(line: &str, strings: &mut intern::Table) -> Result<Option<Program>, ErrorKind> {
     let line = match line.split_once('#') {
         None => line,
         Some((left, _)) => left,
@@ -40,10 +41,10 @@ fn parse_line(line: &str) -> Result<Option<Program>, ErrorKind> {
     let mut fields = line.split_ascii_whitespace();
     let name = match fields.next() {
         None => return Ok(None),
-        Some(name) => name.to_string(),
+        Some(name) => name,
     };
-    let mut vertex: Option<String> = None;
-    let mut fragment: Option<String> = None;
+    let mut vertex: Option<&str> = None;
+    let mut fragment: Option<&str> = None;
     for field in fields {
         if let Some((_, ext)) = field.rsplit_once('.') {
             let shader_type = match ShaderType::from_extension(ext) {
@@ -57,7 +58,7 @@ fn parse_line(line: &str) -> Result<Option<Program>, ErrorKind> {
             if value.is_some() {
                 return Err(ErrorKind::ExtraShader(shader_type));
             }
-            *value = Some(field.to_string());
+            *value = Some(field);
             continue;
         }
         return Err(ErrorKind::UnknownField(field.to_string()));
@@ -65,17 +66,18 @@ fn parse_line(line: &str) -> Result<Option<Program>, ErrorKind> {
     let vertex = vertex.ok_or(ErrorKind::NoShader(ShaderType::Vertex))?;
     let fragment = fragment.ok_or(ErrorKind::NoShader(ShaderType::Fragment))?;
     Ok(Some(Program {
-        name,
-        vertex,
-        fragment,
+        name: strings.add(name),
+        vertex: strings.add(vertex),
+        fragment: strings.add(fragment),
     }))
 }
 
 /// Parse program specs from memory.
 fn parse_spec(text: &str) -> Result<Spec, Error> {
+    let mut strings = intern::Table::new();
     let mut programs: Vec<Program> = Vec::new();
     for (line, lineno) in text.lines().zip(1u32..) {
-        match parse_line(line) {
+        match parse_line(line, &mut strings) {
             Err(kind) => return Err(Error { kind, lineno }),
             Ok(None) => (),
             Ok(Some(program)) => programs.push(program),

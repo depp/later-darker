@@ -1,12 +1,14 @@
+use std::sync::Arc;
+
 /// A spec for a shader program to compile and link.
 #[derive(Debug, Clone)]
 pub struct Program {
     /// Program name. Used for variable names in the generated source code.
-    pub name: String,
+    pub name: Arc<str>,
     /// Vertex shader source filename.
-    pub vertex: String,
+    pub vertex: Arc<str>,
     /// Fragment shader source filename.
-    pub fragment: String,
+    pub fragment: Arc<str>,
 }
 
 /// A spec for all shader programs to compile and link.
