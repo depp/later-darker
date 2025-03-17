@@ -1,6 +1,7 @@
 use crate::intern;
 use crate::spec::{Program, ShaderType, Spec};
 use std::path::Path;
+use std::sync::Arc;
 use std::{error, fmt, fs, io};
 
 /// Kinds of parse errors.
@@ -33,7 +34,10 @@ pub struct Error {
 }
 
 /// Parse a single line of program specs.
-fn parse_line(line: &str, strings: &mut intern::Table) -> Result<Option<Program>, ErrorKind> {
+fn parse_line(
+    line: &str,
+    strings: &mut intern::Table,
+) -> Result<Option<Program<Arc<str>>>, ErrorKind> {
     let line = match line.split_once('#') {
         None => line,
         Some((left, _)) => left,
@@ -75,7 +79,7 @@ fn parse_line(line: &str, strings: &mut intern::Table) -> Result<Option<Program>
 /// Parse program specs from memory.
 fn parse_spec(text: &str) -> Result<Spec, Error> {
     let mut strings = intern::Table::new();
-    let mut programs: Vec<Program> = Vec::new();
+    let mut programs: Vec<Program<Arc<str>>> = Vec::new();
     for (line, lineno) in text.lines().zip(1u32..) {
         match parse_line(line, &mut strings) {
             Err(kind) => return Err(Error { kind, lineno }),

@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process;
 
@@ -11,13 +12,22 @@ mod spec;
 #[derive(Parser, Debug)]
 struct Args {
     spec: PathBuf,
+
+    #[arg(long)]
+    dump: bool,
 }
 
 fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     let spec = parse::read_spec(&args.spec)?;
-    for prog in spec.programs.iter() {
-        eprintln!("Program: {:?}", prog);
+    if args.dump {
+        io::stderr().write_all(spec.dump().as_bytes())?;
     }
+
+    let manifest = spec.to_manifest();
+    if args.dump {
+        io::stderr().write_all(manifest.dump().as_bytes())?;
+    }
+
     Ok(())
 }
 
