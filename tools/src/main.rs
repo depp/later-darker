@@ -4,6 +4,7 @@ use std::process;
 
 use clap::Parser;
 
+mod parse;
 mod spec;
 
 #[derive(Parser, Debug)]
@@ -12,7 +13,7 @@ struct Args {
 }
 
 fn run(args: &Args) -> Result<(), Box<dyn Error>> {
-    let progs = spec::Program::read(&args.spec)?;
+    let progs = parse::read_spec(&args.spec)?;
     for prog in progs.iter() {
         eprintln!("Program: {:?}", prog);
     }
