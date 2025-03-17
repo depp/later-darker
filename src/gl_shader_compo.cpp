@@ -11,7 +11,7 @@
 namespace demo {
 namespace gl_shader {
 
-GLuint Program;
+GLuint TriangleProgram;
 GLuint CubeProgram;
 GLint MVP;
 
@@ -41,7 +41,7 @@ void Init() {
 		glAttachShader(program, shaders[spec.fragment]);
 		glLinkProgram(program);
 	}
-	Program = programs[0];
+	TriangleProgram = programs[0];
 	CubeProgram = programs[1];
 	MVP = glGetUniformLocation(CubeProgram, "MVP");
 }

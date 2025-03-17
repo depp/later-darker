@@ -47,7 +47,7 @@ void Triangle::Render(double time) {
 	             0.5f + 0.5f * std::sin(a - d), 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	glUseProgram(demo::gl_shader::Program);
+	glUseProgram(demo::gl_shader::TriangleProgram);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 

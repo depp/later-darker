@@ -106,7 +106,7 @@ void CompileEmbedded() {
 	for (int i = 0; i < ShaderCount; i++) {
 		glDeleteShader(shaders[i]);
 	}
-	Program = programs[0];
+	TriangleProgram = programs[0];
 	CubeProgram = programs[1];
 	MVP = glGetUniformLocation(CubeProgram, "MVP");
 }
@@ -118,7 +118,7 @@ void CompileFiles() {
 	GLuint program = LinkProgram(vertex, fragment);
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
-	Program = program;
+	TriangleProgram = program;
 
 	vertex = CompileShader(GL_VERTEX_SHADER, "cube.vert");
 	fragment = CompileShader(GL_FRAGMENT_SHADER, "cube.frag");
@@ -130,7 +130,7 @@ void CompileFiles() {
 
 } // namespace
 
-GLuint Program;
+GLuint TriangleProgram;
 GLuint CubeProgram;
 GLint MVP;
 

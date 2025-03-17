@@ -8,7 +8,7 @@
 namespace demo {
 namespace gl_shader {
 
-extern GLuint Program;
+extern GLuint TriangleProgram;
 extern GLuint CubeProgram;
 extern GLint MVP;
 
