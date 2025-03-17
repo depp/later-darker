@@ -1,0 +1,4 @@
+# Shaders to include, one per line.
+
+Triangle triangle.vert triangle.frag
+Cube cube.vert cube.frag
