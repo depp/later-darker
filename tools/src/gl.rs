@@ -3,11 +3,14 @@ use core::str;
 use khronos_api;
 use roxmltree::{self, Document, Node, NodeType};
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::collections::hash_map::Entry;
 use std::fmt;
 use std::ops::Range;
 
 const APIENTRY: &str = "GLAPIENTRY";
+const LINKABLE_VERSION: Version = Version(1, 1);
+const MAX_VERSION: Version = Version(3, 3);
 
 /// A type definition in the OpenGL API.
 #[derive(Debug, Clone)]
@@ -206,12 +209,6 @@ fn parse_registry(node: Node) -> Result<(), GenerateError> {
 // Feature & Version Map
 // ============================================================================
 
-#[derive(Debug, Clone, Copy)]
-enum Profile {
-    Compatibility,
-    Core,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Version(u8, u8);
 
@@ -224,71 +221,107 @@ impl Version {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-enum FeatureId<'input> {
-    Main(Profile, Version),
-    Extension(&'input str),
+/// How a function is linked.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Linkage {
+    /// The function is required but missing.
+    Missing,
+    /// The function may be linked directly at build time.
+    Link,
+    /// The function must be loaded by pointer at runtime.
+    Runtime,
 }
 
-struct Features<'a> {
-    enums: HashMap<&'a str, FeatureId<'a>>,
-    commands: HashMap<&'a str, FeatureId<'a>>,
+/// Information about a function in the API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CommandSpec<'a> {
+    name: &'a str,
+    linkage: Linkage,
 }
 
-fn update_feature<'a>(
-    m: &mut HashMap<&'a str, FeatureId<'a>>,
-    node: Node<'a, 'a>,
-    id: FeatureId<'a>,
-) -> Result<(), GenerateErrorRange<'a>> {
-    let name = require_attribute(node, "name")?;
-    match m.entry(name) {
-        Entry::Occupied(_) => (),
-        Entry::Vacant(e) => {
-            e.insert(id);
+/// A set of features included in an API.
+struct FeatureSet<'a> {
+    enums: HashSet<&'a str>,
+    commands: HashMap<&'a str, Linkage>,
+}
+
+impl<'a> FeatureSet<'a> {
+    fn build(node: Node<'a, 'a>, entry_points: &[&'a str]) -> Result<Self, GenerateErrorRange<'a>> {
+        assert_eq!(node.tag_name().name(), "registry");
+        let mut set = FeatureSet {
+            enums: HashSet::new(),
+            commands: HashMap::with_capacity(entry_points.len()),
+        };
+        for &name in entry_points.iter() {
+            set.commands.insert(name, Linkage::Missing);
         }
-    }
-    Ok(())
-}
-
-fn remove_feature<'a>(
-    m: &mut HashMap<&'a str, FeatureId<'a>>,
-    node: Node<'a, 'a>,
-) -> Result<(), GenerateErrorRange<'a>> {
-    let name = require_attribute(node, "name")?;
-    match m.get_mut(name) {
-        None => Err((
-            GenerateError::RemoveMissing(name.to_string()),
-            Some((node.tag_name().name(), node.range())),
-        )),
-        Some(value) => match value {
-            FeatureId::Main(ref mut profile, _) => {
-                *profile = Profile::Core;
-                Ok(())
+        for child in node.children() {
+            if child.is_element() && child.tag_name().name() == "feature" {
+                set.parse_feature(child)?;
             }
-            FeatureId::Extension(ext) => todo!(),
-        },
-    }
-}
-
-impl<'a> Features<'a> {
-    fn new() -> Self {
-        Features {
-            enums: HashMap::new(),
-            commands: HashMap::new(),
         }
+        for &name in entry_points.iter() {
+            if !set.commands.contains_key(name) {
+                return Err((GenerateError::MissingCommand(name.to_string()), None));
+            }
+        }
+        Ok(set)
+    }
+
+    fn parse_feature(&mut self, node: Node<'a, 'a>) -> Result<(), GenerateErrorRange<'a>> {
+        assert_eq!(node.tag_name().name(), "feature");
+        if require_attribute(node, "api")? != "gl" {
+            return Ok(());
+        }
+        let version = require_attribute(node, "number")?;
+        let version = match Version::parse(version) {
+            None => {
+                return Err((
+                    GenerateError::InvalidVersion(version.to_string()),
+                    Some((node.tag_name().name(), node.range())),
+                ));
+            }
+            Some(version) => version,
+        };
+        let linkage = if version <= LINKABLE_VERSION {
+            Linkage::Link
+        } else if version <= MAX_VERSION {
+            Linkage::Runtime
+        } else {
+            return Ok(());
+        };
+        for child in node.children() {
+            if child.is_element() {
+                match child.tag_name().name() {
+                    "require" => self.parse_require(child, linkage)?,
+                    "remove" => self.parse_remove(child)?,
+                    _ => return Err(unexpected_tag(node, child)),
+                }
+            }
+        }
+        Ok(())
     }
 
     fn parse_require(
         &mut self,
         node: Node<'a, 'a>,
-        id: FeatureId<'a>,
+        linkage: Linkage,
     ) -> Result<(), GenerateErrorRange<'a>> {
         assert_eq!(node.tag_name().name(), "require");
         for child in node.children() {
             if child.is_element() {
                 match child.tag_name().name() {
-                    "command" => update_feature(&mut self.commands, child, id)?,
-                    "enum" => update_feature(&mut self.enums, child, id)?,
+                    "command" => {
+                        let name = require_attribute(child, "name")?;
+                        match self.commands.get_mut(name) {
+                            None => (),
+                            Some(value) => *value = linkage,
+                        }
+                    }
+                    "enum" => {
+                        let name = require_attribute(child, "name")?;
+                        self.enums.insert(name);
+                    }
                     "type" => (),
                     _ => return Err(unexpected_tag(node, child)),
                 }
@@ -309,55 +342,20 @@ impl<'a> Features<'a> {
         for child in node.children() {
             if child.is_element() {
                 match child.tag_name().name() {
-                    "command" => remove_feature(&mut self.commands, child),
-                    "enum" => remove_feature(&mut self.enums, child),
+                    "command" => {
+                        let name = require_attribute(child, "name")?;
+                        match self.commands.get_mut(name) {
+                            None => (),
+                            Some(value) => *value = Linkage::Missing,
+                        }
+                    }
+                    "enum" => {
+                        let name = require_attribute(child, "name")?;
+                        self.enums.remove(name);
+                    }
                     "type" => (),
                     _ => return Err(unexpected_tag(node, child)),
                 }
-            }
-        }
-        Ok(())
-    }
-
-    fn parse_items(
-        &mut self,
-        node: Node<'a, 'a>,
-        id: FeatureId<'a>,
-    ) -> Result<(), GenerateErrorRange<'a>> {
-        for child in node.children() {
-            if child.is_element() {
-                match child.tag_name().name() {
-                    "require" => self.parse_require(child, id)?,
-                    "remove" => self.parse_remove(child)?,
-                    _ => return Err(unexpected_tag(node, child)),
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn parse_feature(&mut self, node: Node<'a, 'a>) -> Result<(), GenerateErrorRange<'a>> {
-        assert_eq!(node.tag_name().name(), "feature");
-        if require_attribute(node, "api")? != "gl" {
-            return Ok(());
-        }
-        let version = require_attribute(node, "number")?;
-        let version = match Version::parse(version) {
-            None => {
-                return Err((
-                    GenerateError::InvalidVersion(version.to_string()),
-                    Some((node.tag_name().name(), node.range())),
-                ));
-            }
-            Some(version) => version,
-        };
-        self.parse_items(node, FeatureId::Main(Profile::Core, version))
-    }
-
-    fn parse_features(&mut self, root: Node<'a, 'a>) -> Result<(), GenerateErrorRange<'a>> {
-        for node in root.children() {
-            if node.is_element() && node.tag_name().name() == "feature" {
-                self.parse_feature(node)?;
             }
         }
         Ok(())
@@ -441,15 +439,17 @@ fn add_commands<'input>(
 }
 
 pub fn generate_doc<'a>(
-    entry_points: &[&str],
+    entry_points: &[&'a str],
     root: Node<'a, 'a>,
 ) -> Result<(), GenerateErrorRange<'a>> {
-    let mut features = Features::new();
-    features.parse_features(root)?;
-    for (&k, v) in features.enums.iter() {
-        eprintln!("{:?} {:?}", k, v);
+    let mut features = FeatureSet::build(root, entry_points)?;
+    for &name in features.enums.iter() {
+        eprintln!("Enum: {}", name);
     }
-    add_commands(root, entry_points)
+    for (&name, &linkage) in features.commands.iter() {
+        eprintln!("Command: {} {:?}", name, linkage);
+    }
+    Ok(())
 }
 
 pub fn generate(entry_points: &[&str]) -> Result<(), Error> {
