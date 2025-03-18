@@ -1,3 +1,4 @@
+pub mod glemit;
 pub mod glscan;
 pub mod shader;
 
@@ -9,6 +10,7 @@ use clap::Parser;
 pub enum Command {
     Shader(shader::Args),
     GLScan(glscan::Args),
+    GLEmit(glemit::Args),
 }
 
 impl Command {
@@ -16,6 +18,7 @@ impl Command {
         match self {
             Command::Shader(c) => c.run(),
             Command::GLScan(c) => c.run(),
+            Command::GLEmit(c) => c.run(),
         }
     }
 }
