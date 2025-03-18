@@ -103,10 +103,10 @@ if(WIN32)
 		"src/gen/shader_data.cpp"
 		"src/gl_shader_compo.cpp"
 		"src/gl_shader_data.cpp"
-		"src/main.cpp"
+		"src/main_windows_compo.cpp"
 		"src/scene_cube.cpp"
 		"src/scene_triangle.cpp"
 	)
 	target_compile_definitions(later-darker-compo PRIVATE COMPO)
-	target_link_libraries(later-darker-compo PRIVATE glfw glm::glm glad_gl33)
+	target_link_libraries(later-darker-compo PRIVATE glm::glm glad_gl33)
 endif()
