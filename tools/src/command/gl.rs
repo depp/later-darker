@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
 use std::io;
@@ -17,12 +18,16 @@ impl Args {
         let mut directory = self.srcdir.clone();
         directory.push("src");
         let files = find_cpp_files(&directory)?;
+        let mut entrypoints: HashSet<String> = HashSet::new();
         for file in files.iter() {
-            let text = fs::read_to_string(&file)?;
-            eprintln!("File: {}", file.file_name().unwrap().to_str().unwrap());
-            for ident in identifier::Identifiers::new(&text) {
-                eprintln!("  {:?}", ident);
-            }
+            let file_entrypoints = read_entrypoints(file)?;
+            entrypoints.extend(file_entrypoints);
+        }
+        let mut entrypoint_list: Vec<&str> = entrypoints.iter().map(|s| s.as_str()).collect();
+        entrypoint_list.sort();
+        eprintln!("Entry points:");
+        for &name in entrypoint_list.iter() {
+            eprintln!("  {}", name);
         }
         Ok(())
     }
@@ -47,4 +52,25 @@ fn find_cpp_files(directory: &Path) -> io::Result<Vec<PathBuf>> {
         files.push(file_path);
     }
     Ok(files)
+}
+
+/// Get a set of all identifiers that look like OpenGL API entri
+fn read_entrypoints(file_name: &Path) -> io::Result<HashSet<String>> {
+    let text = fs::read_to_string(&file_name)?;
+    let mut result = HashSet::new();
+    for ident in identifier::Identifiers::new(&text) {
+        if is_entrypoint(ident) {
+            if !result.contains(ident) {
+                result.insert(ident.to_string());
+            }
+        }
+    }
+    Ok(result)
+}
+
+/// Return true if this string matches the pattern expected for an OpenGL entry point.
+fn is_entrypoint(identifier: &str) -> bool {
+    identifier.len() >= 3
+        && identifier.starts_with("gl")
+        && identifier[2..].chars().next().unwrap().is_ascii_uppercase()
 }
