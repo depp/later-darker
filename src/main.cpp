@@ -17,6 +17,9 @@
 namespace demo {
 namespace {
 
+constexpr int Width = 1280;
+constexpr int Height = 720;
+
 #if !COMPO
 
 // Information about GLFW errors to add to log messages.
@@ -98,7 +101,7 @@ void Main() {
 #endif
 
 	GLFWwindow *window =
-		glfwCreateWindow(640, 480, "Later, Darker", nullptr, nullptr);
+		glfwCreateWindow(Width, Height, "Later, Darker", nullptr, nullptr);
 	if (window == nullptr) {
 		FAIL_GLFW("Could not create window.");
 	}

@@ -19,6 +19,8 @@ namespace scene {
 
 namespace {
 
+constexpr float Aspect = 16.0f / 9.0f;
+
 struct Vertex {
 	short pos[4];
 	unsigned char color[4];
@@ -88,7 +90,7 @@ void Cube::Init() {
 
 void Cube::Render(double time) {
 	glm::mat4 projection =
-		glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 10.0f);
+		glm::perspective(glm::radians(45.0f), Aspect, 0.1f, 10.0f);
 	const float fTime =
 		static_cast<float>(std::fmod(time, 4.0 * std::numbers::pi));
 	glm::mat4 modelView =
