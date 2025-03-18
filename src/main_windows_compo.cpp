@@ -4,7 +4,9 @@
 #include "main.hpp"
 
 #include "gl.hpp"
+#include "gl_shader.hpp"
 #include "log.hpp"
+#include "scene_cube.hpp"
 
 #include <cmath>
 
@@ -120,6 +122,9 @@ void CreateMainWindow(int nShowCmd) {
 }
 
 void Main() {
+	gl_shader::Init();
+	scene::Cube scene;
+	scene.Init();
 	const unsigned long long baseTime = GetTickCount64();
 	for (;;) {
 		MSG msg;
@@ -133,9 +138,7 @@ void Main() {
 			const unsigned long long currentTicks = GetTickCount64() - baseTime;
 			const double time =
 				static_cast<double>(static_cast<int>(currentTicks)) * 0.001;
-			const float a = 0.5f + 0.5f * static_cast<float>(std::sin(time));
-			glClearColor(a, a, a, 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT);
+			scene.Render(time);
 			SwapBuffers(DeviceContext);
 			Sleep(5);
 		}
