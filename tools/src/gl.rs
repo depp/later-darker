@@ -357,38 +357,49 @@ impl<'a> FeatureSet<'a> {
 
 // ============================================================================
 
+fn element_children<'a>(node: Node<'a, 'a>) -> impl Iterator<Item = Node<'a, 'a>> {
+    node.children().filter(|c| c.is_element())
+}
+
+fn element_children_tag<'a>(
+    node: Node<'a, 'a>,
+    name: &'static str,
+) -> impl Iterator<Item = Node<'a, 'a>> {
+    node.children()
+        .filter(move |c| c.is_element() && c.tag_name().name() == name)
+}
+
 fn emit_enums<'a>(
     enums: &HashSet<&str>,
     node: Node<'a, 'a>,
 ) -> Result<String, GenerateErrorRange<'a>> {
     let mut out = String::new();
     let mut emitted = HashSet::with_capacity(enums.len());
-    for child in node.children() {
-        if child.is_element() && child.tag_name().name() == "enums" {
-            for item in child.children() {
-                if item.is_element() {
-                    match item.tag_name().name() {
-                        "enum" => {
-                            if let Some(api) = item.attribute("api") {
-                                if api != "gl" {
-                                    continue;
-                                }
-                            }
-                            let name = require_attribute(item, "name")?;
-                            if emitted.contains(name) {
-                                return Err((
-                                    GenerateError::DuplicateEnum(name.to_string()),
-                                    Some((item.tag_name().name(), item.range())),
-                                ));
-                            }
-                            emitted.insert(name);
-                            let value = require_attribute(item, "value")?;
-                            writeln!(out, "constexpr TYPE {} = {};", name, value).unwrap();
+    for child in element_children_tag(node, "enums") {
+        for item in element_children(child) {
+            match item.tag_name().name() {
+                "enum" => {
+                    if let Some(api) = item.attribute("api") {
+                        if api != "gl" {
+                            continue;
                         }
-                        "unused" => (),
-                        name => panic!("name = {:?}", name),
+                    }
+                    let name = require_attribute(item, "name")?;
+                    if emitted.contains(name) {
+                        return Err((
+                            GenerateError::DuplicateEnum(name.to_string()),
+                            Some((item.tag_name().name(), item.range())),
+                        ));
+                    }
+                    emitted.insert(name);
+                    let value = require_attribute(item, "value")?;
+                    writeln!(out, "constexpr TYPE {} = {};", name, value).unwrap();
+                    if let Some(alias) = item.attribute("alias") {
+                        writeln!(out, "constexpr TYPE {} = {};", alias, name).unwrap();
                     }
                 }
+                "unused" => (),
+                name => return Err(unexpected_tag(child, item)),
             }
         }
     }
