@@ -38,10 +38,11 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam,
 void CreateMainWindow(int nShowCmd) {
 	HINSTANCE hInstance = GetModuleHandleA(nullptr);
 
-	WNDCLASSA wc = {};
-	wc.lpfnWndProc = WindowProc;
-	wc.hInstance = hInstance;
-	wc.lpszClassName = ClassName;
+	WNDCLASSA wc = {
+		.lpfnWndProc = WindowProc,
+		.hInstance = hInstance,
+		.lpszClassName = ClassName,
+	};
 	if (!RegisterClassA(&wc)) {
 		FAIL("Failed to register window class.");
 	}
