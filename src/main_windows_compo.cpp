@@ -6,6 +6,8 @@
 #include "gl.hpp"
 #include "log.hpp"
 
+#include <cmath>
+
 #define NOMINMAX 1
 #undef UNICODE
 #define WIN32_LEAN_AND_MEAN 1
@@ -26,12 +28,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam,
 	switch (uMsg) {
 	case WM_DESTROY:
 		PostQuitMessage(0);
-		return 0;
-
-	case WM_PAINT:
-		glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		SwapBuffers(DeviceContext);
 		return 0;
 
 	case WM_SETCURSOR:
@@ -124,10 +120,23 @@ void CreateMainWindow(int nShowCmd) {
 }
 
 void Main() {
-	MSG msg;
-	while (GetMessageA(&msg, nullptr, 0, 0)) {
-		TranslateMessage(&msg);
-		DispatchMessageA(&msg);
+	double time = 0.0;
+	for (;;) {
+		MSG msg;
+		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+			if (msg.message == WM_QUIT) {
+				break;
+			}
+			TranslateMessage(&msg);
+			DispatchMessageA(&msg);
+		} else {
+			time += 0.01;
+			const float a = 0.5f + 0.5f * static_cast<float>(std::sin(time));
+			glClearColor(a, a, a, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+			SwapBuffers(DeviceContext);
+			Sleep(5);
+		}
 	}
 }
 
