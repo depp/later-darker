@@ -1,8 +1,8 @@
-pub mod emit;
+mod data;
 mod parse;
-pub mod shader;
 mod spec;
 
+pub use data::Data;
 #[allow(unused_imports)]
 pub use parse::ReadError;
 #[allow(unused_imports)]

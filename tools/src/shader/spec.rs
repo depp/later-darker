@@ -1,7 +1,7 @@
+use super::parse;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use super::parse;
 
 /// A spec for a shader program to compile and link.
 #[derive(Debug, Clone)]

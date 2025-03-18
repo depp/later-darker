@@ -40,19 +40,10 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
 
     // Read the shader source code.
     let directory = args.spec.parent().expect("Must have parent directory.");
-    let mut shaders = Vec::with_capacity(manifest.shaders.len());
-    for shader in manifest.shaders.iter() {
-        let mut path = PathBuf::from(directory);
-        path.push(Path::new(shader.name.as_ref()));
-        shaders.push(shader::shader::Shader::read(&path)?);
-    }
+    let data = shader::Data::read_raw(&manifest, directory)?;
 
     // Emit the output.
-    let mut output = String::new();
-    output.push_str(emit::HEADER);
-    output.push_str("namespace demo {\nnamespace gl_shader {\n");
-    shader::emit::emit_shaders(&mut output, &shaders)?;
-    output.push_str("}\n}\n");
+    let output = data.emit_text()?;
 
     match &args.output {
         None => io::stdout().write_all(output.as_bytes())?,

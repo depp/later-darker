@@ -1,5 +1,4 @@
-use std::error;
-use std::fmt::{self, Write};
+use std::fmt::Write;
 
 const COLUMNS: usize = 79;
 
@@ -57,19 +56,3 @@ impl<'a> StringWriter<'a> {
         }
     }
 }
-
-/// Code generation error.
-#[derive(Debug, Clone, Copy)]
-pub enum Error {
-    NullByte,
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Error::NullByte => f.write_str("shader source code contains null byte"),
-        }
-    }
-}
-
-impl error::Error for Error {}
