@@ -25,6 +25,8 @@ pub enum GenerateError {
     MissingCommand(String),
     MissingAttribute(&'static str),
     InvalidVersion(String),
+    InvalidRemoveProfile,
+    RemoveMissing(String),
 }
 
 impl fmt::Display for GenerateError {
@@ -41,6 +43,10 @@ impl fmt::Display for GenerateError {
                 write!(f, "missing required attribute: {}", name)
             }
             GenerateError::InvalidVersion(text) => write!(f, "invalid version number: {:?}", text),
+            GenerateError::InvalidRemoveProfile => write!(f, "invalid profile for remove"),
+            GenerateError::RemoveMissing(name) => {
+                write!(f, "cannot remove unknown item: {:?}", name)
+            }
         }
     }
 }
@@ -244,6 +250,26 @@ fn update_feature<'a>(
     Ok(())
 }
 
+fn remove_feature<'a>(
+    m: &mut HashMap<&'a str, FeatureId<'a>>,
+    node: Node<'a, 'a>,
+) -> Result<(), GenerateErrorRange<'a>> {
+    let name = require_attribute(node, "name")?;
+    match m.get_mut(name) {
+        None => Err((
+            GenerateError::RemoveMissing(name.to_string()),
+            Some((node.tag_name().name(), node.range())),
+        )),
+        Some(value) => match value {
+            FeatureId::Main(ref mut profile, _) => {
+                *profile = Profile::Core;
+                Ok(())
+            }
+            FeatureId::Extension(ext) => todo!(),
+        },
+    }
+}
+
 impl<'a> Features<'a> {
     fn new() -> Self {
         Features {
@@ -271,6 +297,28 @@ impl<'a> Features<'a> {
         Ok(())
     }
 
+    fn parse_remove(&mut self, node: Node<'a, 'a>) -> Result<(), GenerateErrorRange<'a>> {
+        assert_eq!(node.tag_name().name(), "remove");
+        let profile = require_attribute(node, "profile")?;
+        if profile != "core" {
+            return Err((
+                GenerateError::InvalidRemoveProfile,
+                Some((node.tag_name().name(), node.range())),
+            ));
+        }
+        for child in node.children() {
+            if child.is_element() {
+                match child.tag_name().name() {
+                    "command" => remove_feature(&mut self.commands, child),
+                    "enum" => remove_feature(&mut self.enums, child),
+                    "type" => (),
+                    _ => return Err(unexpected_tag(node, child)),
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn parse_items(
         &mut self,
         node: Node<'a, 'a>,
@@ -280,7 +328,7 @@ impl<'a> Features<'a> {
             if child.is_element() {
                 match child.tag_name().name() {
                     "require" => self.parse_require(child, id)?,
-                    "remove" => (),
+                    "remove" => self.parse_remove(child)?,
                     _ => return Err(unexpected_tag(node, child)),
                 }
             }
