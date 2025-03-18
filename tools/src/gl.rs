@@ -376,6 +376,13 @@ fn emit_enums<'a>(
     let mut out = String::new();
     let mut emitted = HashSet::with_capacity(enums.len());
     for child in element_children_tag(node, "enums") {
+        let ty = match child.attribute("type") {
+            None => "GLenum",
+            Some(s) => match s {
+                "bitmask" => "GLbitfield",
+                _ => panic!("type {:?}", s),
+            },
+        };
         for item in element_children(child) {
             match item.tag_name().name() {
                 "enum" => {
@@ -393,9 +400,9 @@ fn emit_enums<'a>(
                     }
                     emitted.insert(name);
                     let value = require_attribute(item, "value")?;
-                    writeln!(out, "constexpr TYPE {} = {};", name, value).unwrap();
+                    writeln!(out, "constexpr {} {} = {};", ty, name, value).unwrap();
                     if let Some(alias) = item.attribute("alias") {
-                        writeln!(out, "constexpr TYPE {} = {};", alias, name).unwrap();
+                        writeln!(out, "constexpr {} {} = {};", ty, alias, name).unwrap();
                     }
                 }
                 "unused" => (),
