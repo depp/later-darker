@@ -24,6 +24,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam,
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
+
 	case WM_PAINT: {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(Window, &ps);
@@ -31,6 +32,12 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam,
 		EndPaint(Window, &ps);
 	}
 		return 0;
+
+	case WM_SETCURSOR:
+		// Hide cursor.
+		if (LOWORD(lParam) == HTCLIENT) {
+			SetCursor(nullptr);
+		}
 	}
 	return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 }
