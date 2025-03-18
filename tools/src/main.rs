@@ -27,7 +27,7 @@ fn write(path: &Path, contents: &[u8]) -> io::Result<()> {
 
 fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     // Read the spec.
-    let spec = shader::parse::read_spec(&args.spec)?;
+    let spec = shader::Spec::read_file(&args.spec)?;
     if args.dump {
         io::stderr().write_all(spec.dump().as_bytes())?;
     }

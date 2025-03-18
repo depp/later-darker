@@ -1,4 +1,9 @@
 pub mod emit;
-pub mod parse;
+mod parse;
 pub mod shader;
-pub mod spec;
+mod spec;
+
+#[allow(unused_imports)]
+pub use parse::ReadError;
+#[allow(unused_imports)]
+pub use spec::{Manifest, Spec};

@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
+use super::parse;
 
 /// A spec for a shader program to compile and link.
 #[derive(Debug, Clone)]
@@ -19,6 +21,11 @@ pub struct Spec {
 }
 
 impl Spec {
+    /// Read a specification from a file.
+    pub fn read_file(path: &Path) -> Result<Self, parse::ReadError> {
+        parse::read_spec(path)
+    }
+
     /// Convert the spec to a manifest.
     pub fn to_manifest(&self) -> Manifest {
         let mut vertex_shaders = ShaderManifest::new();
