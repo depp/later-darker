@@ -4,12 +4,13 @@ use clap::Parser;
 
 mod command;
 mod emit;
+mod identifier;
 mod intern;
 mod shader;
 
 fn main() {
-    let args = command::shader::Args::parse();
-    if let Err(e) = args.run() {
+    let cmd = command::Command::parse();
+    if let Err(e) = cmd.run() {
         eprintln!("Error: {}", e);
         process::exit(1);
     }
