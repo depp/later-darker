@@ -1,4 +1,4 @@
 mod registry;
 
 #[allow(dead_code)]
-pub use registry::{ParseError, run};
+pub use registry::{run, ParseError};
