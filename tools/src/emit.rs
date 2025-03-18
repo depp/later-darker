@@ -1,4 +1,8 @@
 use std::fmt::Write;
+use std::fs;
+use std::io;
+use std::io::Write as _;
+use std::path::Path;
 
 const COLUMNS: usize = 79;
 
@@ -54,5 +58,18 @@ impl<'a> StringWriter<'a> {
                 self.limit = start + (3 + COLUMNS - 2);
             }
         }
+    }
+}
+
+/// Write a file to disk.
+pub fn write(path: &Path, contents: &[u8]) -> io::Result<()> {
+    eprintln!("Writing file: {:?}", path);
+    fs::write(path, contents)
+}
+
+pub fn write_or_stdout(path: Option<&Path>, contents: &[u8]) -> io::Result<()> {
+    match path {
+        None => io::stdout().lock().write_all(contents),
+        Some(path) => write(path, contents),
     }
 }

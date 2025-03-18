@@ -1,10 +1,10 @@
 use std::error::Error;
-use std::fs;
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::Parser;
 
+use crate::emit;
 use crate::shader;
 
 #[derive(Parser, Debug)]
@@ -15,11 +15,6 @@ pub struct Args {
 
     #[arg(long)]
     dump: bool,
-}
-
-fn write(path: &Path, contents: &[u8]) -> io::Result<()> {
-    eprintln!("Writing file: {:?}", path);
-    fs::write(path, contents)
 }
 
 impl Args {
@@ -43,11 +38,7 @@ impl Args {
         // Emit the output.
         let output = data.emit_text()?;
 
-        match &self.output {
-            None => io::stdout().write_all(output.as_bytes())?,
-            Some(path) => write(path, output.as_bytes())?,
-        }
-
+        emit::write_or_stdout(self.output.as_deref(), output.as_bytes())?;
         Ok(())
     }
 }

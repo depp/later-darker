@@ -6,23 +6,18 @@ use std::path::{Path, PathBuf};
 
 use clap::Parser;
 
-use crate::gl;
+use crate::emit;
 use crate::identifier;
 
 #[derive(Parser, Debug)]
 pub struct Args {
     srcdir: PathBuf,
 
-    #[arg(long)]
-    dump_gl: bool,
+    output: Option<PathBuf>,
 }
 
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
-        if self.dump_gl {
-            gl::run()?;
-            return Ok(());
-        }
         let mut directory = self.srcdir.clone();
         directory.push("src");
         let files = find_cpp_files(&directory)?;
@@ -33,10 +28,12 @@ impl Args {
         }
         let mut entrypoint_list: Vec<&str> = entrypoints.iter().map(|s| s.as_str()).collect();
         entrypoint_list.sort();
-        eprintln!("Entry points:");
+        let mut output = String::new();
         for &name in entrypoint_list.iter() {
-            eprintln!("  {}", name);
+            output.push_str(name);
+            output.push('\n');
         }
+        emit::write_or_stdout(self.output.as_deref(), output.as_bytes())?;
         Ok(())
     }
 }
