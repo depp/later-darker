@@ -3,6 +3,7 @@ use core::str;
 use khronos_api;
 use roxmltree::{self, Document, Node, NodeType};
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::fmt;
 use std::ops::Range;
 
@@ -22,6 +23,8 @@ pub enum GenerateError {
     MissingCommandName,
     DuplicateCommand(String),
     MissingCommand(String),
+    MissingAttribute(&'static str),
+    InvalidVersion(String),
 }
 
 impl fmt::Display for GenerateError {
@@ -34,6 +37,10 @@ impl fmt::Display for GenerateError {
             GenerateError::MissingCommand(name) => {
                 write!(f, "could not find command definition: {:?}", name)
             }
+            GenerateError::MissingAttribute(name) => {
+                write!(f, "missing required attribute: {}", name)
+            }
+            GenerateError::InvalidVersion(text) => write!(f, "invalid version number: {:?}", text),
         }
     }
 }
@@ -41,6 +48,16 @@ impl fmt::Display for GenerateError {
 impl error::Error for GenerateError {}
 
 type GenerateErrorRange<'input> = (GenerateError, Option<(&'input str, Range<usize>)>);
+
+fn unexpected_tag<'a, 'input>(
+    parent: Node<'a, 'input>,
+    child: Node<'a, 'input>,
+) -> GenerateErrorRange<'input> {
+    (
+        GenerateError::UnexpectedTag(child.tag_name().name().to_string()),
+        Some((parent.tag_name().name(), child.range())),
+    )
+}
 
 #[derive(Debug)]
 pub struct GenerateErrorPos {
@@ -73,6 +90,19 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {}
+
+fn require_attribute<'a, 'input>(
+    node: Node<'a, 'input>,
+    name: &'static str,
+) -> Result<&'a str, GenerateErrorRange<'input>> {
+    match node.attribute(name) {
+        None => Err((
+            GenerateError::MissingAttribute(name),
+            Some((node.tag_name().name(), node.range())),
+        )),
+        Some(text) => Ok(text),
+    }
+}
 
 /// Parse an element which only contains text. Return the text.
 fn parse_text_contents<'input>(
@@ -166,6 +196,127 @@ fn parse_registry(node: Node) -> Result<(), GenerateError> {
     Ok(())
 }
     */
+// ============================================================================
+// Feature & Version Map
+// ============================================================================
+
+#[derive(Debug, Clone, Copy)]
+enum Profile {
+    Compatibility,
+    Core,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct Version(u8, u8);
+
+impl Version {
+    fn parse(text: &str) -> Option<Self> {
+        let (major, minor) = text.split_once('.')?;
+        let major = u8::from_str_radix(major, 10).ok()?;
+        let minor = u8::from_str_radix(minor, 10).ok()?;
+        Some(Version(major, minor))
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum FeatureId<'input> {
+    Main(Profile, Version),
+    Extension(&'input str),
+}
+
+struct Features<'a> {
+    enums: HashMap<&'a str, FeatureId<'a>>,
+    commands: HashMap<&'a str, FeatureId<'a>>,
+}
+
+fn update_feature<'a>(
+    m: &mut HashMap<&'a str, FeatureId<'a>>,
+    node: Node<'a, 'a>,
+    id: FeatureId<'a>,
+) -> Result<(), GenerateErrorRange<'a>> {
+    let name = require_attribute(node, "name")?;
+    match m.entry(name) {
+        Entry::Occupied(_) => (),
+        Entry::Vacant(e) => {
+            e.insert(id);
+        }
+    }
+    Ok(())
+}
+
+impl<'a> Features<'a> {
+    fn new() -> Self {
+        Features {
+            enums: HashMap::new(),
+            commands: HashMap::new(),
+        }
+    }
+
+    fn parse_require(
+        &mut self,
+        node: Node<'a, 'a>,
+        id: FeatureId<'a>,
+    ) -> Result<(), GenerateErrorRange<'a>> {
+        assert_eq!(node.tag_name().name(), "require");
+        for child in node.children() {
+            if child.is_element() {
+                match child.tag_name().name() {
+                    "command" => update_feature(&mut self.commands, child, id)?,
+                    "enum" => update_feature(&mut self.enums, child, id)?,
+                    "type" => (),
+                    _ => return Err(unexpected_tag(node, child)),
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn parse_items(
+        &mut self,
+        node: Node<'a, 'a>,
+        id: FeatureId<'a>,
+    ) -> Result<(), GenerateErrorRange<'a>> {
+        for child in node.children() {
+            if child.is_element() {
+                match child.tag_name().name() {
+                    "require" => self.parse_require(child, id)?,
+                    "remove" => (),
+                    _ => return Err(unexpected_tag(node, child)),
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn parse_feature(&mut self, node: Node<'a, 'a>) -> Result<(), GenerateErrorRange<'a>> {
+        assert_eq!(node.tag_name().name(), "feature");
+        if require_attribute(node, "api")? != "gl" {
+            return Ok(());
+        }
+        let version = require_attribute(node, "number")?;
+        let version = match Version::parse(version) {
+            None => {
+                return Err((
+                    GenerateError::InvalidVersion(version.to_string()),
+                    Some((node.tag_name().name(), node.range())),
+                ));
+            }
+            Some(version) => version,
+        };
+        self.parse_items(node, FeatureId::Main(Profile::Core, version))
+    }
+
+    fn parse_features(&mut self, root: Node<'a, 'a>) -> Result<(), GenerateErrorRange<'a>> {
+        for node in root.children() {
+            if node.is_element() && node.tag_name().name() == "feature" {
+                self.parse_feature(node)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
 
 /// Add a command to the list of commands, if it is requested (in the entry
 /// map).
@@ -241,6 +392,18 @@ fn add_commands<'input>(
     todo!()
 }
 
+pub fn generate_doc<'a>(
+    entry_points: &[&str],
+    root: Node<'a, 'a>,
+) -> Result<(), GenerateErrorRange<'a>> {
+    let mut features = Features::new();
+    features.parse_features(root)?;
+    for (&k, v) in features.enums.iter() {
+        eprintln!("{:?} {:?}", k, v);
+    }
+    add_commands(root, entry_points)
+}
+
 pub fn generate(entry_points: &[&str]) -> Result<(), Error> {
     let spec_data = khronos_api::GL_XML;
     let spec_data = str::from_utf8(spec_data).expect("XML registry is not UTF-8.");
@@ -249,15 +412,11 @@ pub fn generate(entry_points: &[&str]) -> Result<(), Error> {
         Err(err) => return Err(Error::XML(err)),
     };
     let root = doc.root_element();
-    match add_commands(root, entry_points) {
-        Ok(()) => (),
-        Err((error, pos)) => {
-            return Err(Error::Generate(GenerateErrorPos {
-                error,
-                pos: pos
-                    .map(|(tag, text_range)| (tag.to_string(), doc.text_pos_at(text_range.start))),
-            }));
-        }
-    };
-    Ok(())
+    match generate_doc(entry_points, root) {
+        Ok(()) => Ok(()),
+        Err((error, pos)) => Err(Error::Generate(GenerateErrorPos {
+            error,
+            pos: pos.map(|(tag, text_range)| (tag.to_string(), doc.text_pos_at(text_range.start))),
+        })),
+    }
 }
