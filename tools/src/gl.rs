@@ -369,6 +369,7 @@ fn element_children_tag<'a>(
         .filter(move |c| c.is_element() && c.tag_name().name() == name)
 }
 
+/// Emit enum value definitions.
 fn emit_enums<'a>(
     enums: &HashSet<&str>,
     node: Node<'a, 'a>,
@@ -392,6 +393,9 @@ fn emit_enums<'a>(
                         }
                     }
                     let name = require_attribute(item, "name")?;
+                    if !enums.contains(name) {
+                        continue;
+                    }
                     if emitted.contains(name) {
                         return Err((
                             GenerateError::DuplicateEnum(name.to_string()),
