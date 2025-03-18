@@ -15,6 +15,7 @@ namespace {
 
 constexpr const char *ClassName = "Demo";
 constexpr const char *WindowTitle = "Later, Darker";
+constexpr bool Fullscreen = true;
 HWND Window;
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam,
@@ -45,12 +46,38 @@ void CreateMainWindow(int nShowCmd) {
 		FAIL("Failed to register window class.");
 	}
 
-	constexpr DWORD style = WS_OVERLAPPEDWINDOW;
-	Window = CreateWindowA(ClassName, WindowTitle, style, CW_USEDEFAULT,
-	                       CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr,
-	                       nullptr, hInstance, nullptr);
-	if (Window == nullptr) {
-		FAIL("Failed to create window.");
+	if constexpr (Fullscreen) {
+		// https://devblogs.microsoft.com/oldnewthing/20070809-00/?p=25643
+		// The primary monitor contains point (0, 0).
+		HMONITOR monitor =
+			MonitorFromPoint(POINT{0, 0}, MONITOR_DEFAULTTOPRIMARY);
+		if (monitor == nullptr) {
+			FAIL("Failed to get main monitor.");
+		}
+		MONITORINFO mi;
+		mi.cbSize = sizeof(mi);
+		if (!GetMonitorInfo(monitor, &mi)) {
+			FAIL("Failed to get monitor information.");
+		}
+
+		// Borderless fullscreen window style.
+		constexpr DWORD style = WS_POPUP | WS_VISIBLE;
+		Window = CreateWindowA(ClassName, WindowTitle, style, mi.rcMonitor.left,
+		                       mi.rcMonitor.top,
+		                       mi.rcMonitor.right - mi.rcMonitor.left,
+		                       mi.rcMonitor.bottom - mi.rcMonitor.top, nullptr,
+		                       nullptr, hInstance, nullptr);
+		if (Window == nullptr) {
+			FAIL("Failed to create window.");
+		}
+	} else {
+		constexpr DWORD style = WS_OVERLAPPEDWINDOW;
+		Window = CreateWindowA(ClassName, WindowTitle, style, CW_USEDEFAULT,
+		                       CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+		                       nullptr, nullptr, hInstance, nullptr);
+		if (Window == nullptr) {
+			FAIL("Failed to create window.");
+		}
 	}
 
 	ShowWindow(Window, nShowCmd);
