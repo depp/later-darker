@@ -3,14 +3,13 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "main.hpp"
 
+#include "gl.hpp"
 #include "log.hpp"
 
 #define NOMINMAX 1
 #undef UNICODE
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
-
-#include <gl/gl.h>
 
 namespace demo {
 namespace {
@@ -19,6 +18,7 @@ constexpr const char *ClassName = "Demo";
 constexpr const char *WindowTitle = "Later, Darker";
 constexpr bool Fullscreen = true;
 HWND Window;
+HMODULE OpenGL;
 HDC DeviceContext;
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam,
@@ -52,7 +52,19 @@ const PIXELFORMATDESCRIPTOR PixelFormatDescriptor = {
 	.iLayerType = PFD_MAIN_PLANE,
 };
 
+GLADapiproc GetGLProcAddress(const char *name) {
+	PROC proc = wglGetProcAddress(name);
+	if (proc == nullptr) {
+		proc = GetProcAddress(OpenGL, name);
+	}
+	return reinterpret_cast<GLADapiproc>(proc);
+}
+
 void InitWGL() {
+	OpenGL = GetModuleHandleA("opengl32.dll");
+	if (OpenGL == nullptr) {
+		FAIL("Could not get OpenGL DLL handle.");
+	}
 	const HDC dc = GetDC(Window);
 	DeviceContext = dc;
 	const int pixelFormat = ChoosePixelFormat(dc, &PixelFormatDescriptor);
@@ -69,6 +81,7 @@ void InitWGL() {
 	if (!wglMakeCurrent(dc, rc)) {
 		FAIL("Faled to make context current.");
 	}
+	gladLoadGL(GetGLProcAddress);
 }
 
 void CreateMainWindow(int nShowCmd) {
