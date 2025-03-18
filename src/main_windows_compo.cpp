@@ -48,26 +48,15 @@ void CreateMainWindow(int nShowCmd) {
 	}
 
 	if constexpr (Fullscreen) {
-		// https://devblogs.microsoft.com/oldnewthing/20070809-00/?p=25643
-		// The primary monitor contains point (0, 0).
-		HMONITOR monitor =
-			MonitorFromPoint(POINT{0, 0}, MONITOR_DEFAULTTOPRIMARY);
-		if (monitor == nullptr) {
-			FAIL("Failed to get main monitor.");
-		}
-		MONITORINFO mi;
-		mi.cbSize = sizeof(mi);
-		if (!GetMonitorInfo(monitor, &mi)) {
-			FAIL("Failed to get monitor information.");
-		}
+		// Alternatively, we could MonitorFromPoint() with (0,0), which gives us
+		// the primary monitor, then GetMonitorInfo().
+		int width = GetSystemMetrics(SM_CXSCREEN);
+		int height = GetSystemMetrics(SM_CYSCREEN);
 
 		// Borderless fullscreen window style.
 		constexpr DWORD style = WS_POPUP | WS_VISIBLE;
-		Window = CreateWindowA(ClassName, WindowTitle, style, mi.rcMonitor.left,
-		                       mi.rcMonitor.top,
-		                       mi.rcMonitor.right - mi.rcMonitor.left,
-		                       mi.rcMonitor.bottom - mi.rcMonitor.top, nullptr,
-		                       nullptr, hInstance, nullptr);
+		Window = CreateWindowA(ClassName, WindowTitle, style, 0, 0, width,
+		                       height, nullptr, nullptr, hInstance, nullptr);
 		if (Window == nullptr) {
 			FAIL("Failed to create window.");
 		}
