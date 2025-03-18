@@ -97,15 +97,12 @@ fn parse_type(node: Node) -> Result<Type, ParseError> {
 }
 
 /// Parse a <types> tag.
-fn parse_types(node: Node) -> Result<(), ParseError> {
+fn parse_types(node: Node, types: &mut Vec<Type>) -> Result<(), ParseError> {
     expect_tag(node, "types")?;
     for child in node.children() {
         if child.node_type() == NodeType::Element {
             match child.tag_name().name() {
-                "type" => {
-                    let ty = parse_type(child)?;
-                    eprintln!("Type: {:?}", ty);
-                }
+                "type" => types.push(parse_type(child)?),
                 other => eprintln!("Unknown tag in <types>: <{}>", other),
             }
         }
@@ -116,12 +113,11 @@ fn parse_types(node: Node) -> Result<(), ParseError> {
 /// Parse a <registry> tag.
 fn parse_registry(node: Node) -> Result<(), ParseError> {
     expect_tag(node, "registry")?;
+    let mut types: Vec<Type> = Vec::new();
     for child in node.children() {
         if child.node_type() == NodeType::Element {
             match child.tag_name().name() {
-                "types" => {
-                    parse_types(child)?;
-                }
+                "types" => parse_types(child, &mut types)?,
                 "comment" => (),
                 "feature" => (),
                 "enums" => (),
@@ -133,6 +129,9 @@ fn parse_registry(node: Node) -> Result<(), ParseError> {
                 }
             }
         }
+    }
+    for ty in types.iter() {
+        eprintln!("{:?}", ty);
     }
     Ok(())
 }
