@@ -120,7 +120,7 @@ void CreateMainWindow(int nShowCmd) {
 }
 
 void Main() {
-	double time = 0.0;
+	const unsigned long long baseTime = GetTickCount64();
 	for (;;) {
 		MSG msg;
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -130,7 +130,9 @@ void Main() {
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
 		} else {
-			time += 0.01;
+			const unsigned long long currentTicks = GetTickCount64() - baseTime;
+			const double time =
+				static_cast<double>(static_cast<int>(currentTicks)) * 0.001;
 			const float a = 0.5f + 0.5f * static_cast<float>(std::sin(time));
 			glClearColor(a, a, a, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
