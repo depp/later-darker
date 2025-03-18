@@ -1,5 +1,5 @@
+use super::spec::{Program, ShaderType, Spec};
 use crate::intern;
-use crate::spec::{Program, ShaderType, Spec};
 use std::path::Path;
 use std::sync::Arc;
 use std::{error, fmt, fs, io};
