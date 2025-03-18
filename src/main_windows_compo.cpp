@@ -10,6 +10,8 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 
+#include <gl/gl.h>
+
 namespace demo {
 namespace {
 
@@ -17,6 +19,7 @@ constexpr const char *ClassName = "Demo";
 constexpr const char *WindowTitle = "Later, Darker";
 constexpr bool Fullscreen = true;
 HWND Window;
+HDC DeviceContext;
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam,
                             LPARAM lParam) {
@@ -25,12 +28,10 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam,
 		PostQuitMessage(0);
 		return 0;
 
-	case WM_PAINT: {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(Window, &ps);
-		FillRect(dc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
-		EndPaint(Window, &ps);
-	}
+	case WM_PAINT:
+		glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		SwapBuffers(DeviceContext);
 		return 0;
 
 	case WM_SETCURSOR:
@@ -40,6 +41,34 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam,
 		}
 	}
 	return DefWindowProcA(hWnd, uMsg, wParam, lParam);
+}
+
+const PIXELFORMATDESCRIPTOR PixelFormatDescriptor = {
+	.nSize = sizeof(PIXELFORMATDESCRIPTOR),
+	.nVersion = 1,
+	.dwFlags = PFD_DOUBLEBUFFER | PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL,
+	.iPixelType = PFD_TYPE_RGBA,
+	.cColorBits = 24,
+	.iLayerType = PFD_MAIN_PLANE,
+};
+
+void InitWGL() {
+	const HDC dc = GetDC(Window);
+	DeviceContext = dc;
+	const int pixelFormat = ChoosePixelFormat(dc, &PixelFormatDescriptor);
+	if (pixelFormat == 0) {
+		FAIL("Could not choose pixel format.");
+	}
+	if (!SetPixelFormat(dc, pixelFormat, &PixelFormatDescriptor)) {
+		FAIL("Could not set pixel format.");
+	}
+	const HGLRC rc = wglCreateContext(dc);
+	if (rc == nullptr) {
+		FAIL("Failed to create context.");
+	}
+	if (!wglMakeCurrent(dc, rc)) {
+		FAIL("Faled to make context current.");
+	}
 }
 
 void CreateMainWindow(int nShowCmd) {
@@ -78,6 +107,7 @@ void CreateMainWindow(int nShowCmd) {
 	}
 
 	ShowWindow(Window, nShowCmd);
+	InitWGL();
 }
 
 void Main() {

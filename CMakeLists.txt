@@ -108,5 +108,5 @@ if(WIN32)
 		"src/scene_triangle.cpp"
 	)
 	target_compile_definitions(later-darker-compo PRIVATE COMPO)
-	target_link_libraries(later-darker-compo PRIVATE glm::glm glad_gl33)
+	target_link_libraries(later-darker-compo PRIVATE glm::glm glad_gl33 opengl32.lib)
 endif()
