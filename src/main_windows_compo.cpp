@@ -30,15 +30,26 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam,
 	switch (uMsg) {
 	case WM_DESTROY:
 		PostQuitMessage(0);
-		return 0;
+		break;
 
 	case WM_SETCURSOR:
 		// Hide cursor.
 		if (LOWORD(lParam) == HTCLIENT) {
 			SetCursor(nullptr);
 		}
+		break;
+
+	case WM_KEYDOWN:
+		if (wParam == VK_ESCAPE) {
+			PostQuitMessage(0);
+		}
+		break;
+
+	default:
+		return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 	}
-	return DefWindowProcA(hWnd, uMsg, wParam, lParam);
+
+	return 0;
 }
 
 const PIXELFORMATDESCRIPTOR PixelFormatDescriptor = {
@@ -118,6 +129,9 @@ void CreateMainWindow(int nShowCmd) {
 	}
 
 	ShowWindow(Window, nShowCmd);
+	// Are SetForegroundWindow and SetFocus necessary?
+	SetForegroundWindow(Window);
+	SetFocus(Window);
 	InitWGL();
 }
 
