@@ -1,12 +1,10 @@
-use core::error;
-use core::str;
 use khronos_api;
 use roxmltree::{self, Document, Node, NodeType};
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::collections::hash_map::Entry;
-use std::fmt;
+use std::collections::{HashMap, HashSet};
+use std::error;
+use std::fmt::{self, Write as _};
 use std::ops::Range;
+use std::str;
 
 const APIENTRY: &str = "GLAPIENTRY";
 const LINKABLE_VERSION: Version = Version(1, 1);
@@ -30,6 +28,7 @@ pub enum GenerateError {
     InvalidVersion(String),
     InvalidRemoveProfile,
     RemoveMissing(String),
+    DuplicateEnum(String),
 }
 
 impl fmt::Display for GenerateError {
@@ -50,6 +49,7 @@ impl fmt::Display for GenerateError {
             GenerateError::RemoveMissing(name) => {
                 write!(f, "cannot remove unknown item: {:?}", name)
             }
+            GenerateError::DuplicateEnum(name) => write!(f, "duplicate enum: {:?}", name),
         }
     }
 }
@@ -221,9 +221,9 @@ impl Version {
     }
 }
 
-/// How a function is linked.
+/// Where a function is available to be called.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Linkage {
+enum Availability {
     /// The function is required but missing.
     Missing,
     /// The function may be linked directly at build time.
@@ -232,17 +232,10 @@ enum Linkage {
     Runtime,
 }
 
-/// Information about a function in the API.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct CommandSpec<'a> {
-    name: &'a str,
-    linkage: Linkage,
-}
-
 /// A set of features included in an API.
 struct FeatureSet<'a> {
     enums: HashSet<&'a str>,
-    commands: HashMap<&'a str, Linkage>,
+    commands: HashMap<&'a str, Availability>,
 }
 
 impl<'a> FeatureSet<'a> {
@@ -253,7 +246,7 @@ impl<'a> FeatureSet<'a> {
             commands: HashMap::with_capacity(entry_points.len()),
         };
         for &name in entry_points.iter() {
-            set.commands.insert(name, Linkage::Missing);
+            set.commands.insert(name, Availability::Missing);
         }
         for child in node.children() {
             if child.is_element() && child.tag_name().name() == "feature" {
@@ -283,17 +276,17 @@ impl<'a> FeatureSet<'a> {
             }
             Some(version) => version,
         };
-        let linkage = if version <= LINKABLE_VERSION {
-            Linkage::Link
+        let availability = if version <= LINKABLE_VERSION {
+            Availability::Link
         } else if version <= MAX_VERSION {
-            Linkage::Runtime
+            Availability::Runtime
         } else {
             return Ok(());
         };
         for child in node.children() {
             if child.is_element() {
                 match child.tag_name().name() {
-                    "require" => self.parse_require(child, linkage)?,
+                    "require" => self.parse_require(child, availability)?,
                     "remove" => self.parse_remove(child)?,
                     _ => return Err(unexpected_tag(node, child)),
                 }
@@ -305,7 +298,7 @@ impl<'a> FeatureSet<'a> {
     fn parse_require(
         &mut self,
         node: Node<'a, 'a>,
-        linkage: Linkage,
+        availability: Availability,
     ) -> Result<(), GenerateErrorRange<'a>> {
         assert_eq!(node.tag_name().name(), "require");
         for child in node.children() {
@@ -315,7 +308,7 @@ impl<'a> FeatureSet<'a> {
                         let name = require_attribute(child, "name")?;
                         match self.commands.get_mut(name) {
                             None => (),
-                            Some(value) => *value = linkage,
+                            Some(value) => *value = availability,
                         }
                     }
                     "enum" => {
@@ -346,7 +339,7 @@ impl<'a> FeatureSet<'a> {
                         let name = require_attribute(child, "name")?;
                         match self.commands.get_mut(name) {
                             None => (),
-                            Some(value) => *value = Linkage::Missing,
+                            Some(value) => *value = Availability::Missing,
                         }
                     }
                     "enum" => {
@@ -363,6 +356,44 @@ impl<'a> FeatureSet<'a> {
 }
 
 // ============================================================================
+
+fn emit_enums<'a>(
+    enums: &HashSet<&str>,
+    node: Node<'a, 'a>,
+) -> Result<String, GenerateErrorRange<'a>> {
+    let mut out = String::new();
+    let mut emitted = HashSet::with_capacity(enums.len());
+    for child in node.children() {
+        if child.is_element() && child.tag_name().name() == "enums" {
+            for item in child.children() {
+                if item.is_element() {
+                    match item.tag_name().name() {
+                        "enum" => {
+                            if let Some(api) = item.attribute("api") {
+                                if api != "gl" {
+                                    continue;
+                                }
+                            }
+                            let name = require_attribute(item, "name")?;
+                            if emitted.contains(name) {
+                                return Err((
+                                    GenerateError::DuplicateEnum(name.to_string()),
+                                    Some((item.tag_name().name(), item.range())),
+                                ));
+                            }
+                            emitted.insert(name);
+                            let value = require_attribute(item, "value")?;
+                            writeln!(out, "constexpr TYPE {} = {};", name, value).unwrap();
+                        }
+                        "unused" => (),
+                        name => panic!("name = {:?}", name),
+                    }
+                }
+            }
+        }
+    }
+    Ok(out)
+}
 
 /// Add a command to the list of commands, if it is requested (in the entry
 /// map).
@@ -442,13 +473,15 @@ pub fn generate_doc<'a>(
     entry_points: &[&'a str],
     root: Node<'a, 'a>,
 ) -> Result<(), GenerateErrorRange<'a>> {
-    let mut features = FeatureSet::build(root, entry_points)?;
+    let features = FeatureSet::build(root, entry_points)?;
     for &name in features.enums.iter() {
         eprintln!("Enum: {}", name);
     }
     for (&name, &linkage) in features.commands.iter() {
         eprintln!("Command: {} {:?}", name, linkage);
     }
+    let enums = emit_enums(&features.enums, root)?;
+    eprint!("{}", enums);
     Ok(())
 }
 
