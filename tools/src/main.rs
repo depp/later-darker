@@ -4,6 +4,7 @@ use clap::Parser;
 
 mod command;
 mod emit;
+mod gl;
 mod identifier;
 mod intern;
 mod shader;

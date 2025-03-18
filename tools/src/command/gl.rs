@@ -6,15 +6,23 @@ use std::path::{Path, PathBuf};
 
 use clap::Parser;
 
+use crate::gl;
 use crate::identifier;
 
 #[derive(Parser, Debug)]
 pub struct Args {
     srcdir: PathBuf,
+
+    #[arg(long)]
+    dump_gl: bool,
 }
 
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
+        if self.dump_gl {
+            gl::run()?;
+            return Ok(());
+        }
         let mut directory = self.srcdir.clone();
         directory.push("src");
         let files = find_cpp_files(&directory)?;
