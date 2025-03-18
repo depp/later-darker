@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.30)
 project(later-darker)
 
+set(out_name "LaterDarker")
+
 # =============================================================================
 # Dependencies
 # =============================================================================
@@ -41,7 +43,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Main Build
 # =============================================================================
 
-add_executable(later-darker WIN32
+add_executable(Full WIN32
 	"src/gen/shader_data.cpp"
 	"src/gl_debug.cpp"
 	"src/gl_shader_data.cpp"
@@ -57,14 +59,14 @@ add_executable(later-darker WIN32
 )
 
 if(WIN32)
-	target_sources(later-darker PRIVATE
+	target_sources(Full PRIVATE
 		"src/log_windows.cpp"
 		"src/os_file_windows.cpp"
 		"src/os_windows.cpp"
 		"src/wide_text_buffer.cpp"
 	)
 else()
-	target_sources(later-darker PRIVATE
+	target_sources(Full PRIVATE
 		"src/log_unix.cpp"
 		"src/os_file_unix.cpp"
 		"src/os_unix.cpp"
@@ -72,34 +74,36 @@ else()
 endif()
 
 if(MSVC)
-	target_compile_options(later-darker PRIVATE "/utf-8")
-	target_compile_options(later-darker PRIVATE /W4)
+	target_compile_options(Full PRIVATE "/utf-8")
+	target_compile_options(Full PRIVATE /W4)
 else()
-	target_compile_options(later-darker PRIVATE -Wall -Wextra)
+	target_compile_options(Full PRIVATE -Wall -Wextra)
 endif()
 
 find_package(glfw3 CONFIG REQUIRED)
-target_link_libraries(later-darker PRIVATE glfw)
+target_link_libraries(Full PRIVATE glfw)
 
 find_package(glm CONFIG REQUIRED)
-target_link_libraries(later-darker PRIVATE glm::glm)
+target_link_libraries(Full PRIVATE glm::glm)
 
 if(APPLE)
-	target_link_libraries(later-darker PRIVATE "-framework OpenGL")
+	target_link_libraries(Full PRIVATE "-framework OpenGL")
 endif()
 
 if(USE_GLAD)
 	add_subdirectory("${glad_SOURCE_DIR}/cmake" glad_cmake)
 	glad_add_library(glad_gl33 SHARED REPRODUCIBLE API gl:core=3.3 EXTENSIONS GL_KHR_debug)
-	target_link_libraries(later-darker PRIVATE glad_gl33)
+	target_link_libraries(Full PRIVATE glad_gl33)
 endif()
+
+set_target_properties(Full PROPERTIES OUTPUT_NAME "${out_name}Full")
 
 # =============================================================================
 # Competition Build
 # =============================================================================
 
 if(WIN32)
-	add_executable(later-darker-compo WIN32
+	add_executable(Compo WIN32
 		"src/gen/shader_data.cpp"
 		"src/gl_shader_compo.cpp"
 		"src/gl_shader_data.cpp"
@@ -107,6 +111,7 @@ if(WIN32)
 		"src/scene_cube.cpp"
 		"src/scene_triangle.cpp"
 	)
-	target_compile_definitions(later-darker-compo PRIVATE COMPO)
-	target_link_libraries(later-darker-compo PRIVATE glm::glm glad_gl33 opengl32.lib)
+	target_compile_definitions(Compo PRIVATE COMPO)
+	target_link_libraries(Compo PRIVATE glm::glm glad_gl33 opengl32.lib)
+	set_target_properties(Compo PROPERTIES OUTPUT_NAME "${out_name}Compo")
 endif()
