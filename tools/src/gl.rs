@@ -271,10 +271,7 @@ impl<'a> FeatureSet<'a> {
                 match child.tag_name().name() {
                     "command" => {
                         let name = require_attribute(child, "name")?;
-                        match self.commands.get_mut(name) {
-                            None => (),
-                            Some(value) => *value = Availability::Missing,
-                        }
+                        self.commands.remove(name);
                     }
                     "enum" => {
                         let name = require_attribute(child, "name")?;
@@ -513,7 +510,16 @@ fn emit_functions<'a>(
             let return_type = emit_return_type(proto, type_map)?;
             let (declarations, names) = emit_parameters(item, type_map)?;
             match availability {
-                Availability::Missing => (), // FIXME: error!
+                Availability::Missing => {
+                    write!(
+                        out,
+                        "inline {} {}({}) {{\n\
+                        \tdemo::gl_api::MissingFunction(\"{}\");\n\
+                        }}\n",
+                        return_type, name, declarations, name
+                    )
+                    .unwrap();
+                }
                 Availability::Link => {
                     write!(
                         out,
@@ -575,6 +581,7 @@ fn emit_header(enums: &str, functions: &Functions) -> String {
     .unwrap();
     out.push_str(
         "extern void *FunctionPointers[FunctionPointerCount];\n\
+        [[noreturn]] void MissingFunction(const char *name);\n\
         }\n\
         }\n\
         \n\
@@ -676,5 +683,10 @@ const TYPE_MAP: &[(&str, &str)] = &[
     ("GLdouble", "double"),
     ("GLclampd", "double"),
     ("GLchar", "char"),
+    // GLhalf
+    // GLfixed
+    ("GLintptr", "long long"),
     ("GLsizeiptr", "long long"),
+    ("GLint64", "long long"),
+    ("GLuint64", "unsigned long long"),
 ];

@@ -18,8 +18,16 @@
 namespace demo {
 
 namespace gl_api {
+
 extern const char FunctionNames[];
 void *FunctionPointers[FunctionPointerCount];
+
+[[noreturn]]
+void MissingFunction(const char *name) {
+	(void)name;
+	FAIL("Missing OpenGL entry point.", log::Attr{"name", name});
+}
+
 } // namespace gl_api
 
 namespace {
