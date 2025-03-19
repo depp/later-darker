@@ -510,7 +510,16 @@ fn emit_functions<'a>(
             let return_type = emit_return_type(proto, type_map)?;
             let (declarations, names) = emit_parameters(item, type_map)?;
             match availability {
-                Availability::Missing => (), // FIXME: error!
+                Availability::Missing => {
+                    write!(
+                        out,
+                        "inline {} {}({}) {{\n\
+                        \tdemo::gl_api::MissingFunction(\"{}\");\n\
+                        }}\n",
+                        return_type, name, declarations, name
+                    )
+                    .unwrap();
+                }
                 Availability::Link => {
                     write!(
                         out,
