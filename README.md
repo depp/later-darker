@@ -10,6 +10,7 @@ Later and Darker is licensed under the terms of the Mozilla Public License Versi
 - vcpkg
 - Python
 - Jinja2
+- Rust
 
 To install the prerequisites on Windows:
 
