@@ -3,7 +3,9 @@ name: CMake Build
 on:
   push:
     branches: [main]
+
 jobs:
+
   tools:
     runs-on: windows-latest
     steps:
@@ -26,3 +28,14 @@ jobs:
       with:
         name: ${{ runner.os }}-tools
         path: tools/target/release/tools.exe
+
+  build:
+    runs-on: windows-latest
+    needs: tools
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download Tools
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ runner.os }}-tools
+        path: artifacts
