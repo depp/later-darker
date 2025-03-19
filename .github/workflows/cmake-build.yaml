@@ -25,4 +25,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ runner.os }}-tools
-        with: tools/target/release/tools.exe
+        path: tools/target/release/tools.exe
