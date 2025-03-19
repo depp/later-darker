@@ -1,0 +1,29 @@
+# Workflow for building using CMake.
+name: CMake Build
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - name: Tool Build
+      run: cargo build --release
+      working-directory: tools
+
+    - uses: actions/run-vcpkg@v11
+
+    - name: Configure
+      run: >
+        cmake
+        -B ${{ github.workspace }}/build
+        -S ${{ github.workspace }}
+        --preset x64-release
+
+    - name: Build
+      run: >
+        cmake
+        --build ${{ github.workspace }}/build
