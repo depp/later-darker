@@ -158,8 +158,25 @@ add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+add_custom_command(
+	OUTPUT
+		src/gl_api.hpp
+		src/gl_api.cpp
+	COMMAND
+		${tool}
+		gl-emit
+		${gen}/gl_functions.txt
+		${gen}/gl_api.hpp
+		${gen}/gl_api.cpp
+	DEPENDS
+		${gen}/gl_functions.txt
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 add_custom_target(sources ALL
 	DEPENDS
 	src/shader_data.cpp
 	src/gl_functions.txt
+	src/gl_api.hpp
+	src/gl_api.cpp
 )
