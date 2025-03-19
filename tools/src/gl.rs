@@ -271,10 +271,7 @@ impl<'a> FeatureSet<'a> {
                 match child.tag_name().name() {
                     "command" => {
                         let name = require_attribute(child, "name")?;
-                        match self.commands.get_mut(name) {
-                            None => (),
-                            Some(value) => *value = Availability::Missing,
-                        }
+                        self.commands.remove(name);
                     }
                     "enum" => {
                         let name = require_attribute(child, "name")?;
