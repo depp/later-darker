@@ -50,8 +50,6 @@ jobs:
       with:
         name: ${{ runner.os }}-tools
         path: artifacts
-    - name: Python Dependencies # For glad
-      run: python -m pip install jinja2
     - name: Configure
       run: >
         cmake
