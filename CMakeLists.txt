@@ -128,13 +128,14 @@ endif()
 # Generated Source Code
 # =============================================================================
 
-set(tool ${CMAKE_CURRENT_SOURCE_DIR}/tools/target/release/tools${CMAKE_EXECUTABLE_SUFFIX})
+set(DATA_TOOL ${CMAKE_CURRENT_SOURCE_DIR}/tools/target/release/tools${CMAKE_EXECUTABLE_SUFFIX}
+	CACHE FILEPATH "Path to data generation tool.")
 
 add_custom_command(
 	OUTPUT
 		src/shader_data.cpp
 	COMMAND
-		${tool}
+		${DATA_TOOL}
 		shader
 		shader/shaders.txt
 		${gen}/shader_data.cpp
@@ -144,7 +145,7 @@ add_custom_command(
 		shader/shaders.txt
 		shader/triangle.frag
 		shader/triangle.vert
-		${tool}
+		${DATA_TOOL}
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -152,13 +153,13 @@ add_custom_command(
 	OUTPUT
 		src/gl_functions.txt
 	COMMAND
-		${tool}
+		${DATA_TOOL}
 		gl-scan
 		--output=${gen}/gl_functions.txt
 		${compo_sources}
 	DEPENDS
 		${compo_sources}
-		${tool}
+		${DATA_TOOL}
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -167,14 +168,14 @@ add_custom_command(
 		src/gl_api.hpp
 		src/gl_api.cpp
 	COMMAND
-		${tool}
+		${DATA_TOOL}
 		gl-emit
 		${gen}/gl_functions.txt
 		${gen}/gl_api.hpp
 		${gen}/gl_api.cpp
 	DEPENDS
 		${gen}/gl_functions.txt
-		${tool}
+		${DATA_TOOL}
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
