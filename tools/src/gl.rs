@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::error;
 use std::fmt::{self, Write as _};
 use std::ops::Range;
+use std::rc::Rc;
 use std::str;
 
 const APIENTRY: &str = "GLAPIENTRY";
@@ -29,6 +30,8 @@ pub enum GenerateError {
     InvalidRemoveProfile,
     RemoveMissing(String),
     DuplicateEnum(String),
+    DuplicateFunction(String),
+    InvalidPrototype,
 }
 
 impl fmt::Display for GenerateError {
@@ -50,6 +53,8 @@ impl fmt::Display for GenerateError {
                 write!(f, "cannot remove unknown item: {:?}", name)
             }
             GenerateError::DuplicateEnum(name) => write!(f, "duplicate enum: {:?}", name),
+            GenerateError::DuplicateFunction(name) => write!(f, "dupliacte function: {:?}", name),
+            GenerateError::InvalidPrototype => write!(f, "invalid prototype"),
         }
     }
 }
@@ -113,16 +118,16 @@ fn require_attribute<'a, 'input>(
     }
 }
 
-/// Parse an element which only contains text. Return the text.
-fn parse_text_contents<'input>(
-    node: Node<'_, 'input>,
-) -> Result<String, GenerateErrorRange<'input>> {
-    let mut result = String::new();
+/// Append the text contents of a node to the given string. The node must contain only text.
+fn append_text_contents<'a>(
+    out: &mut String,
+    node: Node<'_, 'a>,
+) -> Result<(), GenerateErrorRange<'a>> {
     for child in node.children() {
         match child.node_type() {
             NodeType::Text => {
                 if let Some(text) = child.text() {
-                    result.push_str(text);
+                    out.push_str(text);
                 }
             }
             NodeType::Element => {
@@ -134,7 +139,16 @@ fn parse_text_contents<'input>(
             _ => (),
         }
     }
-    Ok(result)
+    Ok(())
+}
+
+/// Parse an element which only contains text. Return the text.
+fn parse_text_contents<'input>(
+    node: Node<'_, 'input>,
+) -> Result<String, GenerateErrorRange<'input>> {
+    let mut out = String::new();
+    append_text_contents(&mut out, node)?;
+    Ok(out)
 }
 
 /// Parse a <type> tag.
@@ -410,85 +424,175 @@ fn emit_enums<'a>(
                     }
                 }
                 "unused" => (),
-                name => return Err(unexpected_tag(child, item)),
+                _ => return Err(unexpected_tag(child, item)),
             }
         }
     }
     Ok(out)
 }
 
-/// Add a command to the list of commands, if it is requested (in the entry
-/// map).
-fn add_command<'a, 'input>(
-    node: Node<'a, 'input>,
-    entry_map: &mut HashMap<&str, bool>,
-    entry_list: &mut Vec<(String, Node<'a, 'input>)>,
-) -> Result<(), GenerateErrorRange<'input>> {
+/// Get the name and prototype for a command.
+fn command_info<'a>(node: Node<'a, 'a>) -> Result<(String, Node<'a, 'a>), GenerateErrorRange<'a>> {
     assert_eq!(node.tag_name().name(), "command");
-    let Some(proto) = node
-        .children()
-        .find(|node| node.is_element() && node.tag_name().name() == "proto")
-    else {
+    let Some(proto) = element_children_tag(node, "proto").next() else {
         return Err((
             GenerateError::MissingCommandProto,
             Some((node.tag_name().name(), node.range())),
         ));
     };
-    let Some(name_node) = proto
-        .children()
-        .find(|node| node.is_element() && node.tag_name().name() == "name")
-    else {
+    let Some(name) = element_children_tag(proto, "name").next() else {
         return Err((
             GenerateError::MissingCommandName,
             Some((proto.tag_name().name(), proto.range())),
         ));
     };
-    let name = parse_text_contents(name_node)?;
-    let Some(value) = entry_map.get_mut(name.as_str()) else {
-        // Entry point is not requested.
-        return Ok(());
-    };
-    if *value {
-        return Err((
-            GenerateError::DuplicateCommand(name),
-            Some((name_node.tag_name().name(), name_node.range())),
-        ));
-    }
-    entry_list.push((name, node));
-    *value = true;
-    Ok(())
+    Ok((parse_text_contents(name)?, proto))
 }
 
-fn add_commands<'input>(
-    node: Node<'_, 'input>,
-    entry_points: &[&str],
-) -> Result<(), GenerateErrorRange<'input>> {
-    // Create a map of all commands.
-    let mut entry_map: HashMap<&str, bool> = HashMap::with_capacity(entry_points.len());
-    for &name in entry_points.iter() {
-        entry_map.insert(name, false);
-    }
-    let mut entry_list = Vec::with_capacity(entry_points.len());
+struct Prototype {
+    result: String,
+    parameters_declarations: String,
+    parameter_values: String,
+}
 
-    // Get the XML nodes for the commands.
-    for node in node.children() {
-        if node.is_element() && node.tag_name().name() == "commands" {
-            for node in node.children() {
-                if node.is_element() && node.tag_name().name() == "command" {
-                    add_command(node, &mut entry_map, &mut entry_list)?;
+/// Emit the return type of a function, given the <proto> tag.
+fn emit_return_type<'a>(node: Node<'a, 'a>) -> Result<String, GenerateErrorRange<'a>> {
+    let mut out = String::new();
+    let mut has_name = false;
+    for child in node.children() {
+        match child.node_type() {
+            NodeType::Element => match child.tag_name().name() {
+                "name" => has_name = true,
+                "ptype" => {
+                    if has_name {
+                        return Err((
+                            GenerateError::InvalidPrototype,
+                            Some((node.tag_name().name(), node.range())),
+                        ));
+                    }
+                    let ty = parse_text_contents(child)?;
+                    out.push_str(&ty);
+                }
+                _ => return Err(unexpected_tag(node, child)),
+            },
+            NodeType::Text => {
+                if let Some(text) = child.text() {
+                    if !has_name {
+                        out.push_str(text);
+                    } else if text.chars().any(|c| !c.is_ascii_whitespace()) {
+                        return Err((
+                            GenerateError::InvalidPrototype,
+                            Some((node.tag_name().name(), node.range())),
+                        ));
+                    }
                 }
             }
-        }
-    }
-
-    // Check if any are missing.
-    for &name in entry_points.iter() {
-        match entry_map.get(name) {
-            Some(false) => return Err((GenerateError::MissingCommand(name.to_string()), None)),
             _ => (),
         }
     }
-    todo!()
+    let len = out.trim_ascii_end().len();
+    if len == 0 {
+        return Err((
+            GenerateError::InvalidPrototype,
+            Some((node.tag_name().name(), node.range())),
+        ));
+    }
+    out.truncate(len);
+    Ok(out)
+}
+
+/// Emit the parameter declarations and parameter names, given the <command>
+/// tag.
+fn emit_parameters<'a>(node: Node<'a, 'a>) -> Result<(String, String), GenerateErrorRange<'a>> {
+    let mut declarations = String::new();
+    let mut names = String::new();
+    let mut has_parameter = false;
+    for child in element_children_tag(node, "param") {
+        if has_parameter {
+            declarations.push_str(", ");
+            names.push_str(", ");
+        }
+        has_parameter = true;
+        let mut has_name = false;
+        for item in child.children() {
+            match item.node_type() {
+                NodeType::Element => match item.tag_name().name() {
+                    "ptype" => append_text_contents(&mut declarations, item)?,
+                    "name" => {
+                        if has_name {
+                            return Err((
+                                GenerateError::InvalidPrototype,
+                                Some((item.tag_name().name(), item.range())),
+                            ));
+                        }
+                        has_name = true;
+                        let pos = declarations.len();
+                        append_text_contents(&mut declarations, item)?;
+                        names.push_str(&declarations[pos..]);
+                    }
+                    _ => return Err(unexpected_tag(child, item)),
+                },
+                NodeType::Text => {
+                    if let Some(text) = item.text() {
+                        declarations.push_str(text);
+                    }
+                }
+                _ => (),
+            }
+        }
+        if !has_name {
+            return Err((
+                GenerateError::InvalidPrototype,
+                Some((child.tag_name().name(), child.range())),
+            ));
+        }
+    }
+    Ok((declarations, names))
+}
+
+fn emit_functions<'a>(
+    commands: &HashMap<&'a str, Availability>,
+    node: Node<'a, 'a>,
+) -> Result<(), GenerateErrorRange<'a>> {
+    // let mut out = String::new();
+    let mut lookups = Vec::with_capacity(commands.len());
+    let mut emitted: HashSet<Rc<str>> = HashSet::with_capacity(commands.len());
+    for child in element_children_tag(node, "commands") {
+        for item in element_children(child) {
+            if item.tag_name().name() != "command" {
+                return Err(unexpected_tag(child, item));
+            }
+            let (name, proto) = command_info(item)?;
+            let Some(&availability) = commands.get(name.as_str()) else {
+                continue;
+            };
+            if emitted.contains(name.as_str()) {
+                return Err((
+                    GenerateError::DuplicateFunction(name),
+                    Some((item.tag_name().name(), item.range())),
+                ));
+            }
+            let name: Rc<str> = name.into();
+            let return_type = emit_return_type(proto)?;
+            let (declarations, names) = emit_parameters(item)?;
+            eprintln!(
+                "ret={:?} decl={:?} name={:?}",
+                return_type, declarations, names
+            );
+            match availability {
+                Availability::Missing => (), // FIXME: error!
+                Availability::Link => {
+                    // FIXME
+                }
+                Availability::Runtime => {
+                    let index = lookups.len();
+                    lookups.push(name.clone());
+                }
+            }
+            emitted.insert(name);
+        }
+    }
+    Ok(())
 }
 
 pub fn generate_doc<'a>(
@@ -496,14 +600,9 @@ pub fn generate_doc<'a>(
     root: Node<'a, 'a>,
 ) -> Result<(), GenerateErrorRange<'a>> {
     let features = FeatureSet::build(root, entry_points)?;
-    for &name in features.enums.iter() {
-        eprintln!("Enum: {}", name);
-    }
-    for (&name, &linkage) in features.commands.iter() {
-        eprintln!("Command: {} {:?}", name, linkage);
-    }
     let enums = emit_enums(&features.enums, root)?;
     eprint!("{}", enums);
+    emit_functions(&features.commands, root)?;
     Ok(())
 }
 
