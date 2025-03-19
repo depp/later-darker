@@ -4,18 +4,12 @@ on:
   push:
     branches: [main]
 jobs:
-  build:
+  tools:
     runs-on: windows-latest
-    env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
-
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Tool Cache Restore
+    - uses: actions/checkout@v4
+    - name: Cache
       uses: actions/cache/restore@v4
-      id: restore-tools
       with:
         path: |
           ~/.cargo/bin/
@@ -24,26 +18,11 @@ jobs:
           ~/.cargo/git/db/
           tools/target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Tool Build
+    - name: Build
       run: cargo build --release
       working-directory: tools
-
-    - name: Tool Cache Save
-      uses: actions/cache/save@v4
+    - name: Upload Archives
+      uses: actions/upload-artifact@v4
       with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          tools/target/
-        key: ${{ steps.restore-tools.outputs.cache-primary-key }}
-
-    # See: https://learn.microsoft.com/en-us/vcpkg/consume/binary-caching-github-actions-cache
-    - name: VCPkg Environment
-      uses: actions/github-script@v7
-      with:
-        script: |
-          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+        name: ${{ runner.os }}-tools
+        with: tools/target/release/tools.exe
