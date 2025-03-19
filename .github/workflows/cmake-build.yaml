@@ -56,4 +56,4 @@ jobs:
         -B build
         -S .
         --preset x64-release
-        -DDATA_TOOL=${{ steps.tools.outputs.download-path }}
+        -DDATA_TOOL=${{ steps.tools.outputs.download-path }}/tools.exe
