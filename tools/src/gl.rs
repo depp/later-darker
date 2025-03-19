@@ -449,12 +449,6 @@ fn command_info<'a>(node: Node<'a, 'a>) -> Result<(String, Node<'a, 'a>), Genera
     Ok((parse_text_contents(name)?, proto))
 }
 
-struct Prototype {
-    result: String,
-    parameters_declarations: String,
-    parameter_values: String,
-}
-
 /// Emit the return type of a function, given the <proto> tag.
 fn emit_return_type<'a>(node: Node<'a, 'a>) -> Result<String, GenerateErrorRange<'a>> {
     let mut out = String::new();
@@ -550,11 +544,12 @@ fn emit_parameters<'a>(node: Node<'a, 'a>) -> Result<(String, String), GenerateE
     Ok((declarations, names))
 }
 
+/// Emit OpenGL function interfaces.
 fn emit_functions<'a>(
     commands: &HashMap<&'a str, Availability>,
     node: Node<'a, 'a>,
-) -> Result<(), GenerateErrorRange<'a>> {
-    // let mut out = String::new();
+) -> Result<String, GenerateErrorRange<'a>> {
+    let mut out = String::new();
     let mut lookups = Vec::with_capacity(commands.len());
     let mut emitted: HashSet<Rc<str>> = HashSet::with_capacity(commands.len());
     for child in element_children_tag(node, "commands") {
@@ -582,17 +577,38 @@ fn emit_functions<'a>(
             match availability {
                 Availability::Missing => (), // FIXME: error!
                 Availability::Link => {
-                    // FIXME
+                    write!(
+                        out,
+                        "{} GLIMPORT {}({});\n",
+                        return_type, name, declarations
+                    )
+                    .unwrap();
                 }
                 Availability::Runtime => {
                     let index = lookups.len();
                     lookups.push(name.clone());
+                    write!(
+                        out,
+                        "inline {} {}({}) {{\n\
+                        using Proc = {} (GLAPI *)({});\n",
+                        return_type, name, declarations, return_type, declarations
+                    )
+                    .unwrap();
+                    if return_type != "void" {
+                        out.push_str("return ");
+                    }
+                    write!(
+                        out,
+                        "static_cast<Proc>(GLFunctionPointers[{}])({});\n}}\n",
+                        index, names
+                    )
+                    .unwrap();
                 }
             }
             emitted.insert(name);
         }
     }
-    Ok(())
+    Ok(out)
 }
 
 pub fn generate_doc<'a>(
@@ -602,7 +618,8 @@ pub fn generate_doc<'a>(
     let features = FeatureSet::build(root, entry_points)?;
     let enums = emit_enums(&features.enums, root)?;
     eprint!("{}", enums);
-    emit_functions(&features.commands, root)?;
+    let functions = emit_functions(&features.commands, root)?;
+    eprint!("{}", functions);
     Ok(())
 }
 
