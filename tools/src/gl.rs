@@ -7,28 +7,18 @@ use std::ops::Range;
 use std::rc::Rc;
 use std::str;
 
-const APIENTRY: &str = "GLAPIENTRY";
 const LINKABLE_VERSION: Version = Version(1, 1);
 const MAX_VERSION: Version = Version(3, 3);
-
-/// A type definition in the OpenGL API.
-#[derive(Debug, Clone)]
-struct Type {
-    name: Option<String>,
-    definition: String,
-}
 
 #[derive(Debug, Clone)]
 pub enum GenerateError {
     UnexpectedTag(String),
     MissingCommandProto,
     MissingCommandName,
-    DuplicateCommand(String),
     MissingCommand(String),
     MissingAttribute(&'static str),
     InvalidVersion(String),
     InvalidRemoveProfile,
-    RemoveMissing(String),
     DuplicateEnum(String),
     DuplicateFunction(String),
     InvalidPrototype,
@@ -40,7 +30,6 @@ impl fmt::Display for GenerateError {
             GenerateError::UnexpectedTag(tag) => write!(f, "unexpected tag: <{}>", tag),
             GenerateError::MissingCommandProto => f.write_str("missing command <proto>"),
             GenerateError::MissingCommandName => f.write_str("missing command <name>"),
-            GenerateError::DuplicateCommand(name) => write!(f, "duplicate command: {:?}", name),
             GenerateError::MissingCommand(name) => {
                 write!(f, "could not find command definition: {:?}", name)
             }
@@ -49,9 +38,6 @@ impl fmt::Display for GenerateError {
             }
             GenerateError::InvalidVersion(text) => write!(f, "invalid version number: {:?}", text),
             GenerateError::InvalidRemoveProfile => write!(f, "invalid profile for remove"),
-            GenerateError::RemoveMissing(name) => {
-                write!(f, "cannot remove unknown item: {:?}", name)
-            }
             GenerateError::DuplicateEnum(name) => write!(f, "duplicate enum: {:?}", name),
             GenerateError::DuplicateFunction(name) => write!(f, "dupliacte function: {:?}", name),
             GenerateError::InvalidPrototype => write!(f, "invalid prototype"),
