@@ -4,35 +4,6 @@ project(later-darker)
 set(out_name "LaterDarker")
 
 # =============================================================================
-# Dependencies
-# =============================================================================
-
-set(USE_GLAD 1)
-if(APPLE)
-	set(USE_GLAD 0)
-endif()
-
-# This is for GLAD, and it allows GLAD to use a virtualenv Python if found
-# first, which means that GLAD can find jinja2 in such an environment.
-if(NOT DEFINED Python_FIND_FRAMEWORK)
-	set(Python_FIND_FRAMEWORK NEVER)
-endif()
-
-include(FetchContent)
-FetchContent_Declare(
-	glad
-	URL https://github.com/Dav1dde/glad/archive/refs/tags/v2.0.8.tar.gz
-	URL_HASH SHA256=44f06f9195427c7017f5028d0894f57eb216b0a8f7c4eda7ce883732aeb2d0fc
-)
-
-set(FETCH_PKGS)
-if(USE_GLAD)
-	list(APPEND FETCH_PKGS glad)
-endif()
-
-FetchContent_MakeAvailable(${FETCH_PKGS})
-
-# =============================================================================
 # Common Settings
 # =============================================================================
 
@@ -50,6 +21,7 @@ add_executable(Full WIN32
 	"src/gl_debug.cpp"
 	"src/gl_shader_data.cpp"
 	"src/gl_shader_dev.cpp"
+	"src/gl_windows.cpp"
 	"src/log_standard.cpp"
 	"src/main.cpp"
 	"src/os_string.cpp"
@@ -67,6 +39,8 @@ if(WIN32)
 		"src/os_file_windows.cpp"
 		"src/os_windows.cpp"
 		"src/wide_text_buffer.cpp"
+		${gen}/gl_api_full.cpp
+		${gen}/gl_api_full.hpp
 	)
 else()
 	target_sources(Full PRIVATE
@@ -89,14 +63,12 @@ target_link_libraries(Full PRIVATE glfw)
 find_package(glm CONFIG REQUIRED)
 target_link_libraries(Full PRIVATE glm::glm)
 
-if(APPLE)
-	target_link_libraries(Full PRIVATE "-framework OpenGL")
+if(WIN32)
+	target_link_libraries(Full PRIVATE opengl32.lib)
 endif()
 
-if(USE_GLAD)
-	add_subdirectory("${glad_SOURCE_DIR}/cmake" glad_cmake)
-	glad_add_library(glad_gl33 SHARED REPRODUCIBLE API gl:core=3.3 EXTENSIONS GL_KHR_debug)
-	target_link_libraries(Full PRIVATE glad_gl33)
+if(APPLE)
+	target_link_libraries(Full PRIVATE "-framework OpenGL")
 endif()
 
 set_target_properties(Full PROPERTIES OUTPUT_NAME "${out_name}Full")
@@ -116,7 +88,8 @@ set(compo_sources
 if(WIN32)
 	add_executable(Compo WIN32
 		${compo_sources}
-		${gen}/gl_api.cpp
+		${gen}/gl_api_compo.cpp
+		${gen}/gl_api_compo.hpp
 		${gen}/shader_data.cpp
 	)
 	target_compile_definitions(Compo PRIVATE COMPO)
@@ -165,16 +138,30 @@ add_custom_command(
 
 add_custom_command(
 	OUTPUT
-		src/gl_api.hpp
-		src/gl_api.cpp
+		src/gl_api_compo.hpp
+		src/gl_api_compo.cpp
 	COMMAND
 		${DATA_TOOL}
 		gl-emit
-		${gen}/gl_functions.txt
-		${gen}/gl_api.hpp
-		${gen}/gl_api.cpp
+		--entry-points=${gen}/gl_functions.txt
+		--output-header=${gen}/gl_api_compo.hpp
+		--output-data=${gen}/gl_api_compo.cpp
 	DEPENDS
 		${gen}/gl_functions.txt
+		${DATA_TOOL}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_custom_command(
+	OUTPUT
+		src/gl_api_full.hpp
+		src/gl_api_full.cpp
+	COMMAND
+		${DATA_TOOL}
+		gl-emit
+		--output-header=${gen}/gl_api_full.hpp
+		--output-data=${gen}/gl_api_full.cpp
+	DEPENDS
 		${DATA_TOOL}
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -183,6 +170,8 @@ add_custom_target(sources ALL
 	DEPENDS
 	src/shader_data.cpp
 	src/gl_functions.txt
-	src/gl_api.hpp
-	src/gl_api.cpp
+	src/gl_api_compo.cpp
+	src/gl_api_compo.hpp
+	src/gl_api_full.cpp
+	src/gl_api_full.hpp
 )
