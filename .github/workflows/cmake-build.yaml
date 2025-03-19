@@ -14,7 +14,7 @@ jobs:
       run: cargo build --release
       working-directory: tools
 
-    - uses: actions/run-vcpkg@v11
+    - uses: lukka/run-vcpkg@fdac52dc790413f4ad041fc50f576a0cf6df17c5
 
     - name: Configure
       run: >
