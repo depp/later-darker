@@ -24,7 +24,6 @@ pub enum ErrorKind {
     DuplicateEnum(String),
     DuplicateFunction(String),
     InvalidPrototype,
-    // UnknownAlias(String, String),
     AliasConflict(String, String),
 }
 
@@ -46,11 +45,6 @@ impl fmt::Display for ErrorKind {
             DuplicateEnum(name) => write!(f, "duplicate enum: {:?}", name),
             DuplicateFunction(name) => write!(f, "dupliacte function: {:?}", name),
             InvalidPrototype => write!(f, "invalid prototype"),
-            // UnknownAlias(name, alias) => write!(
-            //     f,
-            //     "enum {:?} is alias for {:?}, which is unknown",
-            //     name, alias
-            // ),
             AliasConflict(name, alias) => write!(
                 f,
                 "enum {:?} is alias for {:?}, but that has a conflicting definiton",
