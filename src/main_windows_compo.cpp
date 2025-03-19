@@ -19,13 +19,21 @@ namespace demo {
 
 namespace gl_api {
 
-extern const char FunctionNames[];
-void *FunctionPointers[FunctionPointerCount];
-
 [[noreturn]]
 void MissingFunction(const char *name) {
 	(void)name;
 	FAIL("Missing OpenGL entry point.", log::Attr{"name", name});
+}
+
+// Load OpenGL entry points.
+void LoadProcs() {
+	const char *namePtr = FunctionNames;
+	for (int i = 0; i < FunctionPointerCount; i++) {
+		PROC proc = wglGetProcAddress(namePtr);
+		CHECK(proc != nullptr);
+		FunctionPointers[i] = static_cast<void *>(proc);
+		namePtr += std::strlen(namePtr) + 1;
+	}
 }
 
 } // namespace gl_api
@@ -74,17 +82,6 @@ const PIXELFORMATDESCRIPTOR PixelFormatDescriptor = {
 	.iLayerType = PFD_MAIN_PLANE,
 };
 
-// Load OpenGL entry points.
-void LoadProcs() {
-	const char *namePtr = gl_api::FunctionNames;
-	for (int i = 0; i < gl_api::FunctionPointerCount; i++) {
-		PROC proc = wglGetProcAddress(namePtr);
-		CHECK(proc != nullptr);
-		gl_api::FunctionPointers[i] = static_cast<void *>(proc);
-		namePtr += std::strlen(namePtr) + 1;
-	}
-}
-
 void InitWGL() {
 	const HDC dc = GetDC(Window);
 	DeviceContext = dc;
@@ -102,7 +99,7 @@ void InitWGL() {
 	if (!wglMakeCurrent(dc, rc)) {
 		FAIL("Faled to make context current.");
 	}
-	LoadProcs();
+	gl_api::LoadProcs();
 }
 
 void CreateMainWindow(int nShowCmd) {

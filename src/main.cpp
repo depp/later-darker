@@ -107,9 +107,7 @@ void Main() {
 	}
 
 	glfwMakeContextCurrent(window);
-#if _WIN32
-	gladLoadGL(glfwGetProcAddress); // TODO: Log version.
-#endif
+	gl_api::LoadProcs();
 #if !COMPO
 	if (var::DebugContext.get()) {
 		gl_debug::Init();
@@ -167,6 +165,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 #include "os_windows.hpp"
 
+#include <cstring>
 #include <shellapi.h>
 
 namespace demo {

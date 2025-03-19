@@ -6,6 +6,7 @@ use std::fmt::{self, Write as _};
 use std::ops::Range;
 use std::rc::Rc;
 use std::str;
+use std::sync::Arc;
 
 use crate::emit;
 
@@ -290,16 +291,14 @@ impl<'a> FeatureSet<'a> {
     /// if they are probed at runtime. Link-time functions are left in because
     /// they have no binary size cost. Returns an error if any of the listed
     /// entry points are not present in the featureset.
-    fn trim_entry_points(&mut self, entry_points: &[&'a str]) -> Result<(), RError<'a>> {
-        for &name in entry_points.iter() {
-            if !self.commands.contains_key(name) {
+    fn trim_entry_points(&mut self, entry_points: &HashSet<Arc<str>>) -> Result<(), RError<'a>> {
+        for name in entry_points.iter() {
+            if !self.commands.contains_key(name.as_ref()) {
                 return Err(ErrorKind::MissingCommand(name.to_string()).into());
             }
         }
-        let mut entry_set = HashSet::<&str>::with_capacity(entry_points.len());
-        entry_set.extend(entry_points.iter());
         for (&name, value) in self.commands.iter_mut() {
-            if *value == Availability::Runtime && !entry_set.contains(name) {
+            if *value == Availability::Runtime && !entry_points.contains(name) {
                 *value = Availability::Missing;
             }
         }
@@ -581,6 +580,7 @@ fn emit_header(enums: &str, functions: &Functions) -> String {
     .unwrap();
     out.push_str(
         "extern void *FunctionPointers[FunctionPointerCount];\n\
+        extern const char FunctionNames[];\n\
         [[noreturn]] void MissingFunction(const char *name);\n\
         }\n\
         }\n\
@@ -609,7 +609,14 @@ fn emit_data(functions: &Functions) -> String {
         .map(|name| name.len())
         .sum::<usize>()
         + functions.lookups.len();
-    writeln!(out, "extern const char FunctionNames[{}] =", size).unwrap();
+    writeln!(
+        out,
+        "void *FunctionPointers[{}];\n\
+        extern const char FunctionNames[{}] =",
+        functions.lookups.len(),
+        size
+    )
+    .unwrap();
     let mut writer = emit::StringWriter::new(&mut out);
     for (n, name) in functions.lookups.iter().enumerate() {
         if n != 0 {
@@ -623,10 +630,15 @@ fn emit_data(functions: &Functions) -> String {
 }
 
 impl API {
-    fn generate_doc<'a>(entry_points: &[&'a str], root: Node<'a, 'a>) -> Result<Self, RError<'a>> {
+    fn generate_doc<'a>(
+        entry_points: Option<&HashSet<Arc<str>>>,
+        root: Node<'a, 'a>,
+    ) -> Result<Self, RError<'a>> {
         let type_map = TypeMap::create();
         let mut features = FeatureSet::build(root)?;
-        features.trim_entry_points(entry_points)?;
+        if let Some(entry_points) = entry_points {
+            features.trim_entry_points(entry_points)?;
+        }
         let enums = emit_enums(&features.enums, root, &type_map)?;
         let functions = emit_functions(&features.commands, root, &type_map)?;
 
@@ -636,7 +648,10 @@ impl API {
         })
     }
 
-    pub fn generate(entry_points: &[&str]) -> Result<Self, GenerateError> {
+    /// Generate an OpenGL API. By default, includes the entire OpenGL API. If
+    /// entry_points is specified, then only those entry points are guaranteed
+    /// to work.
+    pub fn generate(entry_points: Option<&HashSet<Arc<str>>>) -> Result<Self, GenerateError> {
         let spec_data = khronos_api::GL_XML;
         let spec_data = str::from_utf8(spec_data).expect("XML registry is not UTF-8.");
         let doc = match Document::parse(spec_data) {

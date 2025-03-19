@@ -6,6 +6,11 @@
 // This file provides the OpenGL API.
 
 #if __APPLE__
+
+// ============================================================================
+// macOS
+// ============================================================================
+
 // On macOS, an OpenGL loader is not necessary. We can just get the definitions
 // directly from the OpenGL framework.
 
@@ -14,7 +19,11 @@
 
 #include <OpenGL/gl3.h> // IWYU pragma: export
 
-#elif COMPO
+#else
+
+// ============================================================================
+// Windows
+// ============================================================================
 
 struct __GLsync;
 
@@ -23,10 +32,38 @@ using GLuint = unsigned;
 using GLint = int;
 using GLsync = __GLsync *;
 
-#include "gl_api.hpp"
+#if COMPO
+
+// Generated interface file, containing minimal OpenGL API.
+#include "gl_api_compo.hpp"
 
 #else
 
-#include <glad/gl.h> // IWYU pragma: export
+// Generated interface file, containing full OpenGL API.
+#include "gl_api_full.hpp"
 
 #endif
+
+#endif
+
+// ============================================================================
+// Loader
+// ============================================================================
+
+namespace demo {
+namespace gl_api {
+
+#if _WIN32
+
+// Load OpenGL function pointers.
+void LoadProcs();
+
+#else
+
+// Load OpenGL function pointers.
+inline void LoadProcs() {}
+
+#endif
+
+} // namespace gl_api
+} // namespace demo

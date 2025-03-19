@@ -8,16 +8,7 @@ Later and Darker is licensed under the terms of the Mozilla Public License Versi
 
 - CMake
 - vcpkg
-- Python
-- Jinja2
 - Rust
-
-To install the prerequisites on Windows:
-
-```
-winget install Python.Python.3.13
-python3 -m pip install jinja2
-```
 
 ## Build
 
