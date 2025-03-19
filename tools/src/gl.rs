@@ -289,7 +289,10 @@ impl<'a> FeatureSet<'a> {
     }
 
     /// Limit which entry points are available. All of the listed entry points
-    /// are guaranteed to be included. Other entry points will be removed. Returns an error if any of the listed entry points are not present in the featureset.
+    /// are guaranteed to be included. Entry points outside the set are removed
+    /// if they are probed at runtime. Link-time functions are left in because
+    /// they have no binary size cost. Returns an error if any of the listed
+    /// entry points are not present in the featureset.
     fn trim_entry_points(&mut self, entry_points: &[&'a str]) -> Result<(), RError<'a>> {
         for &name in entry_points.iter() {
             if !self.commands.contains_key(name) {
@@ -299,7 +302,7 @@ impl<'a> FeatureSet<'a> {
         let mut entry_set = HashSet::<&str>::with_capacity(entry_points.len());
         entry_set.extend(entry_points.iter());
         for (&name, value) in self.commands.iter_mut() {
-            if !entry_set.contains(name) {
+            if *value == Availability::Runtime && !entry_set.contains(name) {
                 *value = Availability::Missing;
             }
         }
@@ -661,6 +664,10 @@ const TYPE_MAP: &[(&str, &str)] = &[
     // ("GLenum", "unsigned"),
     ("GLboolean", "unsigned char"),
     ("GLbitfield", "unsigned"),
+    ("GLbyte", "char"),
+    ("GLubyte", "unsigned char"),
+    ("GLshort", "short"),
+    ("GLushort", "unsigned short"),
     ("GLint", "int"),
     ("GLuint", "unsigned"),
     ("GLsizei", "int"),
