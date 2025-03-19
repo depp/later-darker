@@ -175,7 +175,7 @@ impl Version {
 /// Where a function is available to be called.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Availability {
-    /// The function is required but missing.
+    /// The function is not available.
     Missing,
     /// The function may be linked directly at build time.
     Link,
@@ -190,23 +190,15 @@ struct FeatureSet<'a> {
 }
 
 impl<'a> FeatureSet<'a> {
-    fn build(node: Node<'a, 'a>, entry_points: &[&'a str]) -> Result<Self, RError<'a>> {
+    fn build(node: Node<'a, 'a>) -> Result<Self, RError<'a>> {
         assert_eq!(node.tag_name().name(), "registry");
-        let mut set = FeatureSet {
+        let mut set: FeatureSet<'_> = FeatureSet {
             enums: HashSet::new(),
-            commands: HashMap::with_capacity(entry_points.len()),
+            commands: HashMap::new(),
         };
-        for &name in entry_points.iter() {
-            set.commands.insert(name, Availability::Missing);
-        }
         for child in node.children() {
             if child.is_element() && child.tag_name().name() == "feature" {
                 set.parse_feature(child)?;
-            }
-        }
-        for &name in entry_points.iter() {
-            if !set.commands.contains_key(name) {
-                return Err(ErrorKind::MissingCommand(name.to_string()).into());
             }
         }
         Ok(set)
@@ -254,10 +246,7 @@ impl<'a> FeatureSet<'a> {
                 match child.tag_name().name() {
                     "command" => {
                         let name = require_attribute(child, "name")?;
-                        match self.commands.get_mut(name) {
-                            None => (),
-                            Some(value) => *value = availability,
-                        }
+                        self.commands.insert(name, availability);
                     }
                     "enum" => {
                         let name = require_attribute(child, "name")?;
@@ -294,6 +283,24 @@ impl<'a> FeatureSet<'a> {
                     "type" => (),
                     _ => return Err(unexpected_tag(node, child)),
                 }
+            }
+        }
+        Ok(())
+    }
+
+    /// Limit which entry points are available. All of the listed entry points
+    /// are guaranteed to be included. Other entry points will be removed. Returns an error if any of the listed entry points are not present in the featureset.
+    fn trim_entry_points(&mut self, entry_points: &[&'a str]) -> Result<(), RError<'a>> {
+        for &name in entry_points.iter() {
+            if !self.commands.contains_key(name) {
+                return Err(ErrorKind::MissingCommand(name.to_string()).into());
+            }
+        }
+        let mut entry_set = HashSet::<&str>::with_capacity(entry_points.len());
+        entry_set.extend(entry_points.iter());
+        for (&name, value) in self.commands.iter_mut() {
+            if !entry_set.contains(name) {
+                *value = Availability::Missing;
             }
         }
         Ok(())
@@ -608,7 +615,8 @@ fn emit_data(functions: &Functions) -> String {
 impl API {
     fn generate_doc<'a>(entry_points: &[&'a str], root: Node<'a, 'a>) -> Result<Self, RError<'a>> {
         let type_map = TypeMap::create();
-        let features = FeatureSet::build(root, entry_points)?;
+        let mut features = FeatureSet::build(root)?;
+        features.trim_entry_points(entry_points)?;
         let enums = emit_enums(&features.enums, root, &type_map)?;
         let functions = emit_functions(&features.commands, root, &type_map)?;
 
