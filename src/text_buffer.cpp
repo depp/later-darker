@@ -141,11 +141,12 @@ void TextBuffer::AppendWide(std::wstring_view value) {
 
 	const wchar_t *ptr = value.data(), *end = ptr + value.size();
 	while (ptr != end) {
-		unsigned ch, ch2;
+		char16_t ch, ch2;
+		char32_t uch;
 		if (Avail() < MinSpace) {
 			Grow();
 		}
-		ch = static_cast<unsigned short>(*ptr++);
+		ch = static_cast<char16_t>(*ptr++);
 		if (ch < 0x80) {
 			*mPos++ = static_cast<char>(ch);
 		} else {
@@ -153,12 +154,14 @@ void TextBuffer::AppendWide(std::wstring_view value) {
 				if (unicode::IsSurrogateHigh(ch) && ptr != end &&
 				    unicode::IsSurrogateLow(ch2 = *ptr)) {
 					ptr++;
-					ch = unicode::DecodeSurrogatePair(ch, ch2);
+					uch = unicode::DecodeSurrogatePair(ch, ch2);
 				} else {
-					ch = unicode::ReplacementCharacter;
+					uch = unicode::ReplacementCharacter;
 				}
+			} else {
+				uch = ch;
 			}
-			mPos = unicode::WriteUTF8(mPos, ch);
+			mPos = unicode::WriteUTF8(mPos, uch);
 		}
 	}
 }
@@ -175,11 +178,12 @@ void TextBuffer::AppendWideEscaped(std::wstring_view value) {
 
 	const wchar_t *ptr = value.data(), *end = ptr + value.size();
 	while (ptr != end) {
-		unsigned ch, ch2, escape;
+		char16_t ch, ch2;
+		unsigned char escape;
 		if (Avail() < MinSpace) {
 			Grow();
 		}
-		ch = static_cast<unsigned short>(*ptr++);
+		ch = static_cast<char16_t>(*ptr++);
 		if (ch < 0x80) {
 			escape = Escape[ch];
 			if (escape == 0) {
@@ -188,7 +192,7 @@ void TextBuffer::AppendWideEscaped(std::wstring_view value) {
 				mPos = AppendHexEscape8(mPos, ch);
 			} else {
 				mPos[0] = '\\';
-				mPos[1] = static_cast<char>(escape);
+				mPos[1] = escape;
 				mPos += 2;
 			}
 		} else {
