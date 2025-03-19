@@ -14,6 +14,14 @@
 
 #include <OpenGL/gl3.h> // IWYU pragma: export
 
+#elif COMPO
+
+using GLenum = unsigned;
+using GLuint = unsigned;
+using GLint = int;
+
+#include "gl_api.hpp"
+
 #else
 
 #include <glad/gl.h> // IWYU pragma: export

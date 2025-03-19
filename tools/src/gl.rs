@@ -24,6 +24,8 @@ pub enum ErrorKind {
     DuplicateEnum(String),
     DuplicateFunction(String),
     InvalidPrototype,
+    // UnknownAlias(String, String),
+    AliasConflict(String, String),
 }
 
 impl fmt::Display for ErrorKind {
@@ -44,6 +46,16 @@ impl fmt::Display for ErrorKind {
             DuplicateEnum(name) => write!(f, "duplicate enum: {:?}", name),
             DuplicateFunction(name) => write!(f, "dupliacte function: {:?}", name),
             InvalidPrototype => write!(f, "invalid prototype"),
+            // UnknownAlias(name, alias) => write!(
+            //     f,
+            //     "enum {:?} is alias for {:?}, which is unknown",
+            //     name, alias
+            // ),
+            AliasConflict(name, alias) => write!(
+                f,
+                "enum {:?} is alias for {:?}, but that has a conflicting definiton",
+                name, alias
+            ),
         }
     }
 }
@@ -309,9 +321,13 @@ fn element_children_tag<'a>(
 }
 
 /// Emit enum value definitions.
-fn emit_enums<'a>(enums: &HashSet<&str>, node: Node<'a, 'a>) -> Result<String, RError<'a>> {
+fn emit_enums<'a>(
+    enums: &HashSet<&str>,
+    node: Node<'a, 'a>,
+    type_map: &TypeMap,
+) -> Result<String, RError<'a>> {
     let mut out = String::new();
-    let mut emitted = HashSet::with_capacity(enums.len());
+    let mut emitted: HashMap<&str, (&str, &str)> = HashMap::with_capacity(enums.len());
     for child in element_children_tag(node, "enums") {
         let ty = match child.attribute("type") {
             None => "GLenum",
@@ -320,6 +336,7 @@ fn emit_enums<'a>(enums: &HashSet<&str>, node: Node<'a, 'a>) -> Result<String, R
                 _ => panic!("type {:?}", s),
             },
         };
+        let ty = type_map.map(ty);
         for item in element_children(child) {
             match item.tag_name().name() {
                 "enum" => {
@@ -332,15 +349,29 @@ fn emit_enums<'a>(enums: &HashSet<&str>, node: Node<'a, 'a>) -> Result<String, R
                     if !enums.contains(name) {
                         continue;
                     }
-                    if emitted.contains(name) {
+                    if emitted.contains_key(name) {
                         return Err(ErrorKind::DuplicateEnum(name.to_string()).at_node(item));
                     }
-                    emitted.insert(name);
                     let value = require_attribute(item, "value")?;
+                    let definition = (ty, value);
+                    let value = match item.attribute("alias") {
+                        None => value,
+                        Some(alias) => match emitted.get(alias) {
+                            None => value,
+                            Some(&alias_definition) => {
+                                if definition != alias_definition {
+                                    return Err(ErrorKind::AliasConflict(
+                                        name.to_string(),
+                                        alias.to_string(),
+                                    )
+                                    .at_node(item));
+                                }
+                                alias
+                            }
+                        },
+                    };
                     writeln!(out, "constexpr {} {} = {};", ty, name, value).unwrap();
-                    if let Some(alias) = item.attribute("alias") {
-                        writeln!(out, "constexpr {} {} = {};", ty, alias, name).unwrap();
-                    }
+                    emitted.insert(name, definition);
                 }
                 "unused" => (),
                 _ => return Err(unexpected_tag(child, item)),
@@ -363,7 +394,7 @@ fn command_info<'a>(node: Node<'a, 'a>) -> Result<(String, Node<'a, 'a>), RError
 }
 
 /// Emit the return type of a function, given the <proto> tag.
-fn emit_return_type<'a>(node: Node<'a, 'a>) -> Result<String, RError<'a>> {
+fn emit_return_type<'a>(node: Node<'a, 'a>, type_map: &TypeMap) -> Result<String, RError<'a>> {
     let mut out = String::new();
     let mut has_name = false;
     for child in node.children() {
@@ -375,7 +406,7 @@ fn emit_return_type<'a>(node: Node<'a, 'a>) -> Result<String, RError<'a>> {
                         return Err(ErrorKind::InvalidPrototype.at_node(node));
                     }
                     let ty = parse_text_contents(child)?;
-                    out.push_str(&ty);
+                    out.push_str(type_map.map(&ty));
                 }
                 _ => return Err(unexpected_tag(node, child)),
             },
@@ -401,7 +432,10 @@ fn emit_return_type<'a>(node: Node<'a, 'a>) -> Result<String, RError<'a>> {
 
 /// Emit the parameter declarations and parameter names, given the <command>
 /// tag.
-fn emit_parameters<'a>(node: Node<'a, 'a>) -> Result<(String, String), RError<'a>> {
+fn emit_parameters<'a>(
+    node: Node<'a, 'a>,
+    type_map: &TypeMap,
+) -> Result<(String, String), RError<'a>> {
     let mut declarations = String::new();
     let mut names = String::new();
     let mut has_parameter = false;
@@ -415,7 +449,10 @@ fn emit_parameters<'a>(node: Node<'a, 'a>) -> Result<(String, String), RError<'a
         for item in child.children() {
             match item.node_type() {
                 NodeType::Element => match item.tag_name().name() {
-                    "ptype" => append_text_contents(&mut declarations, item)?,
+                    "ptype" => {
+                        let ty = parse_text_contents(item)?;
+                        declarations.push_str(type_map.map(&ty));
+                    }
                     "name" => {
                         if has_name {
                             return Err(ErrorKind::InvalidPrototype.at_node(item));
@@ -451,6 +488,7 @@ struct Functions {
 fn emit_functions<'a>(
     commands: &HashMap<&'a str, Availability>,
     node: Node<'a, 'a>,
+    type_map: &TypeMap,
 ) -> Result<Functions, RError<'a>> {
     let mut out = String::new();
     let mut lookups = Vec::with_capacity(commands.len());
@@ -468,14 +506,14 @@ fn emit_functions<'a>(
                 return Err(ErrorKind::DuplicateFunction(name).at_node(item));
             }
             let name: Rc<str> = name.into();
-            let return_type = emit_return_type(proto)?;
-            let (declarations, names) = emit_parameters(item)?;
+            let return_type = emit_return_type(proto, type_map)?;
+            let (declarations, names) = emit_parameters(item, type_map)?;
             match availability {
                 Availability::Missing => (), // FIXME: error!
                 Availability::Link => {
                     write!(
                         out,
-                        "{} GLIMPORT {}({});\n",
+                        "GLIMPORT {} GLAPI {}({});\n",
                         return_type, name, declarations
                     )
                     .unwrap();
@@ -520,10 +558,17 @@ fn emit_header(enums: &str, functions: &Functions) -> String {
     let mut out = String::new();
     out.push_str(emit::HEADER);
     out.push_str(
-        "namespace demo {\n\
+        "#define GLAPI __stdcall\n\
+        #define GLIMPORT __declspec(dllimport)\n\
+        namespace demo {\n\
         namespace gl_api {\n",
     );
-    writeln!(out, "constexpr int FunctionPointerCount = {};", 10).unwrap();
+    writeln!(
+        out,
+        "constexpr int FunctionPointerCount = {};",
+        functions.lookups.len()
+    )
+    .unwrap();
     out.push_str(
         "extern void *FunctionPointers[FunctionPointerCount];\n\
         }\n\
@@ -533,14 +578,16 @@ fn emit_header(enums: &str, functions: &Functions) -> String {
         \n",
     );
     out.push_str(&enums);
-    out.push_str("\n// Functions\n\n");
+    out.push_str("\n// Functions\n\nextern \"C\" {\n");
     out.push_str(&functions.functions);
+    out.push_str("}\n");
     out
 }
 
 fn emit_data(functions: &Functions) -> String {
     let mut out = String::new();
     out.push_str(emit::HEADER);
+
     out.push_str(
         "namespace demo {\n\
         namespace gl_api {\n",
@@ -566,9 +613,10 @@ fn emit_data(functions: &Functions) -> String {
 
 impl API {
     fn generate_doc<'a>(entry_points: &[&'a str], root: Node<'a, 'a>) -> Result<Self, RError<'a>> {
+        let type_map = TypeMap::create();
         let features = FeatureSet::build(root, entry_points)?;
-        let enums = emit_enums(&features.enums, root)?;
-        let functions = emit_functions(&features.commands, root)?;
+        let enums = emit_enums(&features.enums, root, &type_map)?;
+        let functions = emit_functions(&features.commands, root, &type_map)?;
 
         Ok(API {
             header: emit_header(&enums, &functions),
@@ -594,3 +642,30 @@ impl API {
         }
     }
 }
+
+struct TypeMap(HashMap<&'static str, &'static str>);
+
+impl TypeMap {
+    fn create() -> Self {
+        TypeMap(HashMap::from_iter(TYPE_MAP.iter().cloned()))
+    }
+
+    fn map<'a>(&'_ self, ty: &'a str) -> &'a str {
+        self.0.get(ty).cloned().unwrap_or(ty)
+    }
+}
+
+const TYPE_MAP: &[(&str, &str)] = &[
+    // ("GLenum", "unsigned"),
+    ("GLboolean", "unsigned char"),
+    ("GLbitfield", "unsigned"),
+    ("GLint", "int"),
+    ("GLuint", "unsigned"),
+    ("GLsizei", "int"),
+    ("GLfloat", "float"),
+    ("GLclampf", "float"),
+    ("GLdouble", "double"),
+    ("GLclampd", "double"),
+    ("GLchar", "char"),
+    ("GLsizeiptr", "long long"),
+];

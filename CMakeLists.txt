@@ -40,6 +40,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(gen ${CMAKE_CURRENT_BINARY_DIR}/src)
+include_directories(${gen})
 
 # =============================================================================
 # Main Build
@@ -115,10 +116,11 @@ set(compo_sources
 if(WIN32)
 	add_executable(Compo WIN32
 		${compo_sources}
+		${gen}/gl_api.cpp
 		${gen}/shader_data.cpp
 	)
 	target_compile_definitions(Compo PRIVATE COMPO)
-	target_link_libraries(Compo PRIVATE glm::glm glad_gl33 opengl32.lib)
+	target_link_libraries(Compo PRIVATE glm::glm opengl32.lib)
 	set_target_properties(Compo PROPERTIES OUTPUT_NAME "${out_name}Compo")
 endif()
 
@@ -142,6 +144,7 @@ add_custom_command(
 		shader/shaders.txt
 		shader/triangle.frag
 		shader/triangle.vert
+		${tool}
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -155,6 +158,7 @@ add_custom_command(
 		${compo_sources}
 	DEPENDS
 		${compo_sources}
+		${tool}
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -170,6 +174,7 @@ add_custom_command(
 		${gen}/gl_api.cpp
 	DEPENDS
 		${gen}/gl_functions.txt
+		${tool}
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
