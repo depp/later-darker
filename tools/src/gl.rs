@@ -26,21 +26,22 @@ pub enum GenerateError {
 
 impl fmt::Display for GenerateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use GenerateError::*;
         match self {
-            GenerateError::UnexpectedTag(tag) => write!(f, "unexpected tag: <{}>", tag),
-            GenerateError::MissingCommandProto => f.write_str("missing command <proto>"),
-            GenerateError::MissingCommandName => f.write_str("missing command <name>"),
-            GenerateError::MissingCommand(name) => {
+            UnexpectedTag(tag) => write!(f, "unexpected tag: <{}>", tag),
+            MissingCommandProto => f.write_str("missing command <proto>"),
+            MissingCommandName => f.write_str("missing command <name>"),
+            MissingCommand(name) => {
                 write!(f, "could not find command definition: {:?}", name)
             }
-            GenerateError::MissingAttribute(name) => {
+            MissingAttribute(name) => {
                 write!(f, "missing required attribute: {}", name)
             }
-            GenerateError::InvalidVersion(text) => write!(f, "invalid version number: {:?}", text),
-            GenerateError::InvalidRemoveProfile => write!(f, "invalid profile for remove"),
-            GenerateError::DuplicateEnum(name) => write!(f, "duplicate enum: {:?}", name),
-            GenerateError::DuplicateFunction(name) => write!(f, "dupliacte function: {:?}", name),
-            GenerateError::InvalidPrototype => write!(f, "invalid prototype"),
+            InvalidVersion(text) => write!(f, "invalid version number: {:?}", text),
+            InvalidRemoveProfile => write!(f, "invalid profile for remove"),
+            DuplicateEnum(name) => write!(f, "duplicate enum: {:?}", name),
+            DuplicateFunction(name) => write!(f, "dupliacte function: {:?}", name),
+            InvalidPrototype => write!(f, "invalid prototype"),
         }
     }
 }
