@@ -11,7 +11,7 @@ const LINKABLE_VERSION: Version = Version(1, 1);
 const MAX_VERSION: Version = Version(3, 3);
 
 #[derive(Debug, Clone)]
-pub enum GenerateError {
+pub enum ErrorKind {
     UnexpectedTag(String),
     MissingCommandProto,
     MissingCommandName,
@@ -24,9 +24,9 @@ pub enum GenerateError {
     InvalidPrototype,
 }
 
-impl fmt::Display for GenerateError {
+impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use GenerateError::*;
+        use ErrorKind::*;
         match self {
             UnexpectedTag(tag) => write!(f, "unexpected tag: <{}>", tag),
             MissingCommandProto => f.write_str("missing command <proto>"),
@@ -46,70 +46,85 @@ impl fmt::Display for GenerateError {
     }
 }
 
-impl error::Error for GenerateError {}
-
-type GenerateErrorRange<'input> = (GenerateError, Option<(&'input str, Range<usize>)>);
-
-fn unexpected_tag<'a, 'input>(
-    parent: Node<'a, 'input>,
-    child: Node<'a, 'input>,
-) -> GenerateErrorRange<'input> {
-    (
-        GenerateError::UnexpectedTag(child.tag_name().name().to_string()),
-        Some((parent.tag_name().name(), child.range())),
-    )
-}
-
-#[derive(Debug)]
-pub struct GenerateErrorPos {
-    pub error: GenerateError,
-    pub pos: Option<(String, roxmltree::TextPos)>,
-}
-
-impl fmt::Display for GenerateErrorPos {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.pos {
-            None => self.error.fmt(f),
-            Some((tag, pos)) => write!(f, "line {}: in <{}>: {}", pos.row, tag, self.error),
+impl ErrorKind {
+    /// Return this error with the location for a node included.
+    fn at_node<'a>(self, node: Node<'_, 'a>) -> RError<'a> {
+        RError {
+            kind: self,
+            pos: Some((node.tag_name().name(), node.range())),
         }
     }
 }
 
+impl error::Error for ErrorKind {}
+
+/// A code generation error. This is an internal version, which is converted ot the GError below.
+struct RError<'a> {
+    kind: ErrorKind,
+    pos: Option<(&'a str, Range<usize>)>,
+}
+
+impl<'a> From<ErrorKind> for RError<'a> {
+    fn from(value: ErrorKind) -> Self {
+        RError {
+            kind: value,
+            pos: None,
+        }
+    }
+}
+
+fn unexpected_tag<'a, 'input>(parent: Node<'a, 'input>, child: Node<'a, 'input>) -> RError<'input> {
+    RError {
+        kind: ErrorKind::UnexpectedTag(child.tag_name().name().to_string()),
+        pos: Some((parent.tag_name().name(), child.range())),
+    }
+}
+
+/// A code generation error.
 #[derive(Debug)]
-pub enum Error {
-    XML(roxmltree::Error),
-    Generate(GenerateErrorPos),
+pub struct Error {
+    pub kind: ErrorKind,
+    pub pos: Option<(String, roxmltree::TextPos)>,
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Error::XML(e) => write!(f, "could not parse OpenGL spec: {}", e),
-            Error::Generate(e) => write!(f, "could not generate OpenGL API: {}", e),
+        match &self.pos {
+            None => self.kind.fmt(f),
+            Some((tag, pos)) => write!(f, "line {}: in <{}>: {}", pos.row, tag, self.kind),
         }
     }
 }
 
-impl error::Error for Error {}
+#[derive(Debug)]
+pub enum GenerateError {
+    XML(roxmltree::Error),
+    Generate(Error),
+}
+
+impl fmt::Display for GenerateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GenerateError::XML(e) => write!(f, "could not parse OpenGL spec: {}", e),
+            GenerateError::Generate(e) => write!(f, "could not generate OpenGL API: {}", e),
+        }
+    }
+}
+
+impl error::Error for GenerateError {}
 
 fn require_attribute<'a, 'input>(
     node: Node<'a, 'input>,
     name: &'static str,
-) -> Result<&'a str, GenerateErrorRange<'input>> {
+) -> Result<&'a str, RError<'input>> {
     match node.attribute(name) {
-        None => Err((
-            GenerateError::MissingAttribute(name),
-            Some((node.tag_name().name(), node.range())),
-        )),
+        None => Err(ErrorKind::MissingAttribute(name).at_node(node)),
         Some(text) => Ok(text),
     }
 }
 
 /// Append the text contents of a node to the given string. The node must contain only text.
-fn append_text_contents<'a>(
-    out: &mut String,
-    node: Node<'_, 'a>,
-) -> Result<(), GenerateErrorRange<'a>> {
+fn append_text_contents<'a>(out: &mut String, node: Node<'_, 'a>) -> Result<(), RError<'a>> {
     for child in node.children() {
         match child.node_type() {
             NodeType::Text => {
@@ -118,10 +133,7 @@ fn append_text_contents<'a>(
                 }
             }
             NodeType::Element => {
-                return Err((
-                    GenerateError::UnexpectedTag(child.tag_name().name().to_string()),
-                    Some((node.tag_name().name(), child.range())),
-                ));
+                return Err(unexpected_tag(node, child));
             }
             _ => (),
         }
@@ -130,9 +142,7 @@ fn append_text_contents<'a>(
 }
 
 /// Parse an element which only contains text. Return the text.
-fn parse_text_contents<'input>(
-    node: Node<'_, 'input>,
-) -> Result<String, GenerateErrorRange<'input>> {
+fn parse_text_contents<'input>(node: Node<'_, 'input>) -> Result<String, RError<'input>> {
     let mut out = String::new();
     append_text_contents(&mut out, node)?;
     Ok(out)
@@ -240,7 +250,7 @@ struct FeatureSet<'a> {
 }
 
 impl<'a> FeatureSet<'a> {
-    fn build(node: Node<'a, 'a>, entry_points: &[&'a str]) -> Result<Self, GenerateErrorRange<'a>> {
+    fn build(node: Node<'a, 'a>, entry_points: &[&'a str]) -> Result<Self, RError<'a>> {
         assert_eq!(node.tag_name().name(), "registry");
         let mut set = FeatureSet {
             enums: HashSet::new(),
@@ -256,13 +266,13 @@ impl<'a> FeatureSet<'a> {
         }
         for &name in entry_points.iter() {
             if !set.commands.contains_key(name) {
-                return Err((GenerateError::MissingCommand(name.to_string()), None));
+                return Err(ErrorKind::MissingCommand(name.to_string()).into());
             }
         }
         Ok(set)
     }
 
-    fn parse_feature(&mut self, node: Node<'a, 'a>) -> Result<(), GenerateErrorRange<'a>> {
+    fn parse_feature(&mut self, node: Node<'a, 'a>) -> Result<(), RError<'a>> {
         assert_eq!(node.tag_name().name(), "feature");
         if require_attribute(node, "api")? != "gl" {
             return Ok(());
@@ -270,10 +280,7 @@ impl<'a> FeatureSet<'a> {
         let version = require_attribute(node, "number")?;
         let version = match Version::parse(version) {
             None => {
-                return Err((
-                    GenerateError::InvalidVersion(version.to_string()),
-                    Some((node.tag_name().name(), node.range())),
-                ));
+                return Err(ErrorKind::InvalidVersion(version.to_string()).at_node(node));
             }
             Some(version) => version,
         };
@@ -300,7 +307,7 @@ impl<'a> FeatureSet<'a> {
         &mut self,
         node: Node<'a, 'a>,
         availability: Availability,
-    ) -> Result<(), GenerateErrorRange<'a>> {
+    ) -> Result<(), RError<'a>> {
         assert_eq!(node.tag_name().name(), "require");
         for child in node.children() {
             if child.is_element() {
@@ -324,14 +331,11 @@ impl<'a> FeatureSet<'a> {
         Ok(())
     }
 
-    fn parse_remove(&mut self, node: Node<'a, 'a>) -> Result<(), GenerateErrorRange<'a>> {
+    fn parse_remove(&mut self, node: Node<'a, 'a>) -> Result<(), RError<'a>> {
         assert_eq!(node.tag_name().name(), "remove");
         let profile = require_attribute(node, "profile")?;
         if profile != "core" {
-            return Err((
-                GenerateError::InvalidRemoveProfile,
-                Some((node.tag_name().name(), node.range())),
-            ));
+            return Err(ErrorKind::InvalidRemoveProfile.at_node(node));
         }
         for child in node.children() {
             if child.is_element() {
@@ -371,10 +375,7 @@ fn element_children_tag<'a>(
 }
 
 /// Emit enum value definitions.
-fn emit_enums<'a>(
-    enums: &HashSet<&str>,
-    node: Node<'a, 'a>,
-) -> Result<String, GenerateErrorRange<'a>> {
+fn emit_enums<'a>(enums: &HashSet<&str>, node: Node<'a, 'a>) -> Result<String, RError<'a>> {
     let mut out = String::new();
     let mut emitted = HashSet::with_capacity(enums.len());
     for child in element_children_tag(node, "enums") {
@@ -398,10 +399,7 @@ fn emit_enums<'a>(
                         continue;
                     }
                     if emitted.contains(name) {
-                        return Err((
-                            GenerateError::DuplicateEnum(name.to_string()),
-                            Some((item.tag_name().name(), item.range())),
-                        ));
+                        return Err(ErrorKind::DuplicateEnum(name.to_string()).at_node(item));
                     }
                     emitted.insert(name);
                     let value = require_attribute(item, "value")?;
@@ -419,25 +417,19 @@ fn emit_enums<'a>(
 }
 
 /// Get the name and prototype for a command.
-fn command_info<'a>(node: Node<'a, 'a>) -> Result<(String, Node<'a, 'a>), GenerateErrorRange<'a>> {
+fn command_info<'a>(node: Node<'a, 'a>) -> Result<(String, Node<'a, 'a>), RError<'a>> {
     assert_eq!(node.tag_name().name(), "command");
     let Some(proto) = element_children_tag(node, "proto").next() else {
-        return Err((
-            GenerateError::MissingCommandProto,
-            Some((node.tag_name().name(), node.range())),
-        ));
+        return Err(ErrorKind::MissingCommandProto.at_node(node));
     };
     let Some(name) = element_children_tag(proto, "name").next() else {
-        return Err((
-            GenerateError::MissingCommandName,
-            Some((proto.tag_name().name(), proto.range())),
-        ));
+        return Err(ErrorKind::MissingCommandName.at_node(proto));
     };
     Ok((parse_text_contents(name)?, proto))
 }
 
 /// Emit the return type of a function, given the <proto> tag.
-fn emit_return_type<'a>(node: Node<'a, 'a>) -> Result<String, GenerateErrorRange<'a>> {
+fn emit_return_type<'a>(node: Node<'a, 'a>) -> Result<String, RError<'a>> {
     let mut out = String::new();
     let mut has_name = false;
     for child in node.children() {
@@ -446,10 +438,7 @@ fn emit_return_type<'a>(node: Node<'a, 'a>) -> Result<String, GenerateErrorRange
                 "name" => has_name = true,
                 "ptype" => {
                     if has_name {
-                        return Err((
-                            GenerateError::InvalidPrototype,
-                            Some((node.tag_name().name(), node.range())),
-                        ));
+                        return Err(ErrorKind::InvalidPrototype.at_node(node));
                     }
                     let ty = parse_text_contents(child)?;
                     out.push_str(&ty);
@@ -461,10 +450,7 @@ fn emit_return_type<'a>(node: Node<'a, 'a>) -> Result<String, GenerateErrorRange
                     if !has_name {
                         out.push_str(text);
                     } else if text.chars().any(|c| !c.is_ascii_whitespace()) {
-                        return Err((
-                            GenerateError::InvalidPrototype,
-                            Some((node.tag_name().name(), node.range())),
-                        ));
+                        return Err(ErrorKind::InvalidPrototype.at_node(node));
                     }
                 }
             }
@@ -473,10 +459,7 @@ fn emit_return_type<'a>(node: Node<'a, 'a>) -> Result<String, GenerateErrorRange
     }
     let len = out.trim_ascii_end().len();
     if len == 0 {
-        return Err((
-            GenerateError::InvalidPrototype,
-            Some((node.tag_name().name(), node.range())),
-        ));
+        return Err(ErrorKind::InvalidPrototype.at_node(node));
     }
     out.truncate(len);
     Ok(out)
@@ -484,7 +467,7 @@ fn emit_return_type<'a>(node: Node<'a, 'a>) -> Result<String, GenerateErrorRange
 
 /// Emit the parameter declarations and parameter names, given the <command>
 /// tag.
-fn emit_parameters<'a>(node: Node<'a, 'a>) -> Result<(String, String), GenerateErrorRange<'a>> {
+fn emit_parameters<'a>(node: Node<'a, 'a>) -> Result<(String, String), RError<'a>> {
     let mut declarations = String::new();
     let mut names = String::new();
     let mut has_parameter = false;
@@ -501,10 +484,7 @@ fn emit_parameters<'a>(node: Node<'a, 'a>) -> Result<(String, String), GenerateE
                     "ptype" => append_text_contents(&mut declarations, item)?,
                     "name" => {
                         if has_name {
-                            return Err((
-                                GenerateError::InvalidPrototype,
-                                Some((item.tag_name().name(), item.range())),
-                            ));
+                            return Err(ErrorKind::InvalidPrototype.at_node(item));
                         }
                         has_name = true;
                         let pos = declarations.len();
@@ -522,10 +502,7 @@ fn emit_parameters<'a>(node: Node<'a, 'a>) -> Result<(String, String), GenerateE
             }
         }
         if !has_name {
-            return Err((
-                GenerateError::InvalidPrototype,
-                Some((child.tag_name().name(), child.range())),
-            ));
+            return Err(ErrorKind::InvalidPrototype.at_node(child));
         }
     }
     Ok((declarations, names))
@@ -535,7 +512,7 @@ fn emit_parameters<'a>(node: Node<'a, 'a>) -> Result<(String, String), GenerateE
 fn emit_functions<'a>(
     commands: &HashMap<&'a str, Availability>,
     node: Node<'a, 'a>,
-) -> Result<String, GenerateErrorRange<'a>> {
+) -> Result<String, RError<'a>> {
     let mut out = String::new();
     let mut lookups = Vec::with_capacity(commands.len());
     let mut emitted: HashSet<Rc<str>> = HashSet::with_capacity(commands.len());
@@ -549,10 +526,7 @@ fn emit_functions<'a>(
                 continue;
             };
             if emitted.contains(name.as_str()) {
-                return Err((
-                    GenerateError::DuplicateFunction(name),
-                    Some((item.tag_name().name(), item.range())),
-                ));
+                return Err(ErrorKind::DuplicateFunction(name).at_node(item));
             }
             let name: Rc<str> = name.into();
             let return_type = emit_return_type(proto)?;
@@ -598,10 +572,7 @@ fn emit_functions<'a>(
     Ok(out)
 }
 
-pub fn generate_doc<'a>(
-    entry_points: &[&'a str],
-    root: Node<'a, 'a>,
-) -> Result<(), GenerateErrorRange<'a>> {
+fn generate_doc<'a>(entry_points: &[&'a str], root: Node<'a, 'a>) -> Result<(), RError<'a>> {
     let features = FeatureSet::build(root, entry_points)?;
     let enums = emit_enums(&features.enums, root)?;
     eprint!("{}", enums);
@@ -610,18 +581,18 @@ pub fn generate_doc<'a>(
     Ok(())
 }
 
-pub fn generate(entry_points: &[&str]) -> Result<(), Error> {
+pub fn generate(entry_points: &[&str]) -> Result<(), GenerateError> {
     let spec_data = khronos_api::GL_XML;
     let spec_data = str::from_utf8(spec_data).expect("XML registry is not UTF-8.");
     let doc = match Document::parse(spec_data) {
         Ok(doc) => doc,
-        Err(err) => return Err(Error::XML(err)),
+        Err(err) => return Err(GenerateError::XML(err)),
     };
     let root = doc.root_element();
     match generate_doc(entry_points, root) {
         Ok(()) => Ok(()),
-        Err((error, pos)) => Err(Error::Generate(GenerateErrorPos {
-            error,
+        Err(RError { kind, pos }) => Err(GenerateError::Generate(Error {
+            kind,
             pos: pos.map(|(tag, text_range)| (tag.to_string(), doc.text_pos_at(text_range.start))),
         })),
     }
