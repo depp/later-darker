@@ -36,6 +36,8 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
     - uses: actions/checkout@v4
+    - name: Install CMake and Ninja
+      uses: lukka/get-cmake@341e8741adc519af67193f98e5f1c1e2b4c042ce
     - name: Download Tools
       id: tools
       uses: actions/download-artifact@v4
