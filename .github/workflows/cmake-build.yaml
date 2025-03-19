@@ -23,7 +23,7 @@ jobs:
     - name: Build
       run: cargo build --release
       working-directory: tools
-    - name: Upload Archives
+    - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ runner.os }}-tools
@@ -57,3 +57,12 @@ jobs:
         -S .
         --preset x64-release
         -DDATA_TOOL=${{ steps.tools.outputs.download-path }}/tools.exe
+    - name: Build
+      run: cmake --build build
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ runner.os }}-demo
+        path:
+          build/*.exe
+          build/*.dll
