@@ -8,22 +8,32 @@ jobs:
     runs-on: windows-latest
     steps:
 
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Tool Cache Restore
+      uses: actions/cache/restore@v4
+      id: restore-tools
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          tools/target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Tool Build
       run: cargo build --release
       working-directory: tools
 
-    - uses: lukka/run-vcpkg@fdac52dc790413f4ad041fc50f576a0cf6df17c5
-
-    - name: Configure
-      run: >
-        cmake
-        -B ${{ github.workspace }}/build
-        -S ${{ github.workspace }}
-        --preset x64-release
-
-    - name: Build
-      run: >
-        cmake
-        --build ${{ github.workspace }}/build
+    - name: Tool Cache Save
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          tools/target/
+        key: ${{ steps.restore-tools.outputs.cache-primary-key }}
