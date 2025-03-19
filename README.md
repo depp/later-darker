@@ -19,6 +19,12 @@ winget install Python.Python.3.13
 python3 -m pip install jinja2
 ```
 
+## Build
+
+To build with Visual Studio, open the project folder with Visual Studio.
+
+In Visual Studio, run **Project** → **Configure later-darker**. This will run the CMake configuration step and fetch the vcpkg dependencies. You can now select a target and run.
+
 ## Debugging
 
 In Visual Studio, go to **Debug** → **Debug and Launch Settings for later-darker**. This will bring up the `launch.vs.json` file. Add an `"args"` property to the configuration:

@@ -39,31 +39,11 @@ FetchContent_MakeAvailable(${FETCH_PKGS})
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# =============================================================================
-# Generated Source Code
-# =============================================================================
-
-# Generate source code.
-add_custom_command(
-	OUTPUT 
-		src/gen/shader_data.cpp
-	COMMAND
-		${CMAKE_CURRENT_SOURCE_DIR}/tools/target/release/tools${CMAKE_EXECUTABLE_SUFFIX}
-		shader
-		${CMAKE_CURRENT_SOURCE_DIR}/shader/shaders.txt
-		${CMAKE_CURRENT_BINARY_DIR}/src/gen/shader_data.cpp
-	DEPENDS
-		shader/cube.frag
-		shader/cube.vert
-		shader/shaders.txt
-		shader/triangle.frag
-		shader/triangle.vert
-)
+set(gen ${CMAKE_CURRENT_BINARY_DIR}/src)
 
 # =============================================================================
 # Main Build
 # =============================================================================
-
 
 add_executable(Full WIN32
 	"src/gl_debug.cpp"
@@ -77,7 +57,7 @@ add_executable(Full WIN32
 	"src/text_buffer.cpp"
 	"src/text_unicode.cpp"
 	"src/var.cpp"
-	${CMAKE_CURRENT_BINARY_DIR}/src/gen/shader_data.cpp
+	${gen}/shader_data.cpp
 )
 
 if(WIN32)
@@ -124,20 +104,40 @@ set_target_properties(Full PROPERTIES OUTPUT_NAME "${out_name}Full")
 # Competition Build
 # =============================================================================
 
+set(compo_sources
+	src/gl_shader_compo.cpp
+	src/gl_shader_data.cpp
+	src/main_windows_compo.cpp
+	src/scene_cube.cpp
+	src/scene_triangle.cpp
+)
+
 if(WIN32)
 	add_executable(Compo WIN32
-		"src/gl_shader_compo.cpp"
-		"src/gl_shader_data.cpp"
-		"src/main_windows_compo.cpp"
-		"src/scene_cube.cpp"
-		"src/scene_triangle.cpp"
+		${compo_sources}
+		${gen}/shader_data.cpp
 	)
-	target_sources(Compo PRIVATE
-		${CMAKE_CURRENT_BINARY_DIR}/src/gen/shader_data.cpp
-	)
-	get_property(compo_sources TARGET Compo PROPERTY SOURCES)
-	message("SOURCES: ${compo_sources}")
 	target_compile_definitions(Compo PRIVATE COMPO)
 	target_link_libraries(Compo PRIVATE glm::glm glad_gl33 opengl32.lib)
 	set_target_properties(Compo PROPERTIES OUTPUT_NAME "${out_name}Compo")
 endif()
+
+# =============================================================================
+# Generated Source Code
+# =============================================================================
+
+add_custom_command(
+	OUTPUT
+		src/shader_data.cpp
+	COMMAND
+		${CMAKE_CURRENT_SOURCE_DIR}/tools/target/release/tools${CMAKE_EXECUTABLE_SUFFIX}
+		shader
+		${CMAKE_CURRENT_SOURCE_DIR}/shader/shaders.txt
+		${gen}/shader_data.cpp
+	DEPENDS
+		shader/cube.frag
+		shader/cube.vert
+		shader/shaders.txt
+		shader/triangle.frag
+		shader/triangle.vert
+)
