@@ -16,9 +16,12 @@
 
 #elif COMPO
 
+struct __GLsync;
+
 using GLenum = unsigned;
 using GLuint = unsigned;
 using GLint = int;
+using GLsync = __GLsync *;
 
 #include "gl_api.hpp"
 

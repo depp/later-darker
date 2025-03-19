@@ -581,6 +581,7 @@ fn emit_header(enums: &str, functions: &Functions) -> String {
     .unwrap();
     out.push_str(
         "extern void *FunctionPointers[FunctionPointerCount];\n\
+        [[noreturn]] void MissingFunction(const char *name);\n\
         }\n\
         }\n\
         \n\
@@ -682,5 +683,10 @@ const TYPE_MAP: &[(&str, &str)] = &[
     ("GLdouble", "double"),
     ("GLclampd", "double"),
     ("GLchar", "char"),
+    // GLhalf
+    // GLfixed
+    ("GLintptr", "long long"),
     ("GLsizeiptr", "long long"),
+    ("GLint64", "long long"),
+    ("GLuint64", "unsigned long long"),
 ];
