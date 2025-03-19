@@ -11,18 +11,16 @@ use crate::identifier;
 
 #[derive(Parser, Debug)]
 pub struct Args {
-    srcdir: PathBuf,
+    sources: Vec<PathBuf>,
 
+    #[arg(long)]
     output: Option<PathBuf>,
 }
 
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
-        let mut directory = self.srcdir.clone();
-        directory.push("src");
-        let files = find_cpp_files(&directory)?;
         let mut entrypoints: HashSet<String> = HashSet::new();
-        for file in files.iter() {
+        for file in self.sources.iter() {
             let file_entrypoints = read_entrypoints(file)?;
             entrypoints.extend(file_entrypoints);
         }
@@ -36,27 +34,6 @@ impl Args {
         emit::write_or_stdout(self.output.as_deref(), output.as_bytes())?;
         Ok(())
     }
-}
-
-/// List all C++ implementation files in the given directory.
-fn find_cpp_files(directory: &Path) -> io::Result<Vec<PathBuf>> {
-    let mut files = Vec::new();
-    for item in fs::read_dir(&directory)? {
-        let item = item?;
-        let mut file_path = directory.to_path_buf();
-        file_path.push(item.file_name());
-        let Some(ext) = file_path.extension() else {
-            continue;
-        };
-        let Some(ext) = ext.to_str() else {
-            continue;
-        };
-        if ext != "cpp" {
-            continue;
-        }
-        files.push(file_path);
-    }
-    Ok(files)
 }
 
 /// Get a set of all identifiers that look like OpenGL API entri

@@ -126,13 +126,15 @@ endif()
 # Generated Source Code
 # =============================================================================
 
+set(tool ${CMAKE_CURRENT_SOURCE_DIR}/tools/target/release/tools${CMAKE_EXECUTABLE_SUFFIX})
+
 add_custom_command(
 	OUTPUT
 		src/shader_data.cpp
 	COMMAND
-		${CMAKE_CURRENT_SOURCE_DIR}/tools/target/release/tools${CMAKE_EXECUTABLE_SUFFIX}
+		${tool}
 		shader
-		${CMAKE_CURRENT_SOURCE_DIR}/shader/shaders.txt
+		shader/shaders.txt
 		${gen}/shader_data.cpp
 	DEPENDS
 		shader/cube.frag
@@ -140,4 +142,24 @@ add_custom_command(
 		shader/shaders.txt
 		shader/triangle.frag
 		shader/triangle.vert
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_custom_command(
+	OUTPUT
+		src/gl_functions.txt
+	COMMAND
+		${tool}
+		gl-scan
+		--output=${gen}/gl_functions.txt
+		${compo_sources}
+	DEPENDS
+		${compo_sources}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_custom_target(sources ALL
+	DEPENDS
+	src/shader_data.cpp
+	src/gl_functions.txt
 )
