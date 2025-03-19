@@ -7,6 +7,8 @@ use std::ops::Range;
 use std::rc::Rc;
 use std::str;
 
+use crate::emit;
+
 const LINKABLE_VERSION: Version = Version(1, 1);
 const MAX_VERSION: Version = Version(3, 3);
 
@@ -508,11 +510,16 @@ fn emit_parameters<'a>(node: Node<'a, 'a>) -> Result<(String, String), RError<'a
     Ok((declarations, names))
 }
 
+struct Functions {
+    functions: String,
+    lookups: Vec<Rc<str>>,
+}
+
 /// Emit OpenGL function interfaces.
 fn emit_functions<'a>(
     commands: &HashMap<&'a str, Availability>,
     node: Node<'a, 'a>,
-) -> Result<String, RError<'a>> {
+) -> Result<Functions, RError<'a>> {
     let mut out = String::new();
     let mut lookups = Vec::with_capacity(commands.len());
     let mut emitted: HashSet<Rc<str>> = HashSet::with_capacity(commands.len());
@@ -531,10 +538,6 @@ fn emit_functions<'a>(
             let name: Rc<str> = name.into();
             let return_type = emit_return_type(proto)?;
             let (declarations, names) = emit_parameters(item)?;
-            eprintln!(
-                "ret={:?} decl={:?} name={:?}",
-                return_type, declarations, names
-            );
             match availability {
                 Availability::Missing => (), // FIXME: error!
                 Availability::Link => {
@@ -551,7 +554,7 @@ fn emit_functions<'a>(
                     write!(
                         out,
                         "inline {} {}({}) {{\n\
-                        using Proc = {} (GLAPI *)({});\n",
+                        \tusing Proc = {} (GLAPI *)({});\n\t",
                         return_type, name, declarations, return_type, declarations
                     )
                     .unwrap();
@@ -560,7 +563,7 @@ fn emit_functions<'a>(
                     }
                     write!(
                         out,
-                        "static_cast<Proc>(GLFunctionPointers[{}])({});\n}}\n",
+                        "static_cast<Proc>(demo::gl_api::FunctionPointers[{}])({});\n}}\n",
                         index, names
                     )
                     .unwrap();
@@ -569,31 +572,93 @@ fn emit_functions<'a>(
             emitted.insert(name);
         }
     }
-    Ok(out)
+    Ok(Functions {
+        functions: out,
+        lookups,
+    })
 }
 
-fn generate_doc<'a>(entry_points: &[&'a str], root: Node<'a, 'a>) -> Result<(), RError<'a>> {
-    let features = FeatureSet::build(root, entry_points)?;
-    let enums = emit_enums(&features.enums, root)?;
-    eprint!("{}", enums);
-    let functions = emit_functions(&features.commands, root)?;
-    eprint!("{}", functions);
-    Ok(())
+/// Generated OpenGL API bindings.
+pub struct API {
+    pub header: String,
+    pub data: String,
 }
 
-pub fn generate(entry_points: &[&str]) -> Result<(), GenerateError> {
-    let spec_data = khronos_api::GL_XML;
-    let spec_data = str::from_utf8(spec_data).expect("XML registry is not UTF-8.");
-    let doc = match Document::parse(spec_data) {
-        Ok(doc) => doc,
-        Err(err) => return Err(GenerateError::XML(err)),
-    };
-    let root = doc.root_element();
-    match generate_doc(entry_points, root) {
-        Ok(()) => Ok(()),
-        Err(RError { kind, pos }) => Err(GenerateError::Generate(Error {
-            kind,
-            pos: pos.map(|(tag, text_range)| (tag.to_string(), doc.text_pos_at(text_range.start))),
-        })),
+fn emit_header(enums: &str, functions: &Functions) -> String {
+    let mut out = String::new();
+    out.push_str(emit::HEADER);
+    out.push_str(
+        "namespace demo {\n\
+        namespace gl_api {\n",
+    );
+    writeln!(out, "constexpr int FunctionPointerCount = {};", 10).unwrap();
+    out.push_str(
+        "extern void *FunctionPointers[FunctionPointerCount];\n\
+        }\n\
+        }\n\
+        \n\
+        // Constants \n\
+        \n",
+    );
+    out.push_str(&enums);
+    out.push_str("\n// Functions\n\n");
+    out.push_str(&functions.functions);
+    out
+}
+
+fn emit_data(functions: &Functions) -> String {
+    let mut out = String::new();
+    out.push_str(emit::HEADER);
+    out.push_str(
+        "namespace demo {\n\
+        namespace gl_api {\n",
+    );
+    let size = functions
+        .lookups
+        .iter()
+        .map(|name| name.len())
+        .sum::<usize>()
+        + functions.lookups.len();
+    writeln!(out, "extern const char FunctionNames[{}] =", size).unwrap();
+    let mut writer = emit::StringWriter::new(&mut out);
+    for (n, name) in functions.lookups.iter().enumerate() {
+        if n != 0 {
+            writer.write(&[0]);
+        }
+        writer.write(name.as_bytes());
+    }
+    writer.finish();
+    out.push_str(";\n}\n}\n");
+    out
+}
+
+impl API {
+    fn generate_doc<'a>(entry_points: &[&'a str], root: Node<'a, 'a>) -> Result<Self, RError<'a>> {
+        let features = FeatureSet::build(root, entry_points)?;
+        let enums = emit_enums(&features.enums, root)?;
+        let functions = emit_functions(&features.commands, root)?;
+
+        Ok(API {
+            header: emit_header(&enums, &functions),
+            data: emit_data(&functions),
+        })
+    }
+
+    pub fn generate(entry_points: &[&str]) -> Result<Self, GenerateError> {
+        let spec_data = khronos_api::GL_XML;
+        let spec_data = str::from_utf8(spec_data).expect("XML registry is not UTF-8.");
+        let doc = match Document::parse(spec_data) {
+            Ok(doc) => doc,
+            Err(err) => return Err(GenerateError::XML(err)),
+        };
+        let root = doc.root_element();
+        match API::generate_doc(entry_points, root) {
+            Ok(api) => Ok(api),
+            Err(RError { kind, pos }) => Err(GenerateError::Generate(Error {
+                kind,
+                pos: pos
+                    .map(|(tag, text_range)| (tag.to_string(), doc.text_pos_at(text_range.start))),
+            })),
+        }
     }
 }
