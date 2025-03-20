@@ -81,6 +81,9 @@ void WideTextBuffer::Reallocate(std::size_t newCapacity) {
 			FAIL_ALLOC(size);
 		}
 		if (offset > 0) {
+			// Analysis false positive: Analysis concludes that there can be a
+			// buffer overrun here.
+#pragma warning(suppress : 6386)
 			std::memcpy(ptr, mStart, offset * sizeof(wchar_t));
 		}
 	}

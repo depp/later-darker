@@ -10,6 +10,8 @@
 #include "scene_cube.hpp"
 #include "var.hpp"
 
+#define GLFW_INCLUDE_NONE
+
 #include <GLFW/glfw3.h>
 
 #define FAIL_GLFW(...) FAIL(__VA_ARGS__, GLFWErrorInfo::Get())
