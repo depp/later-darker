@@ -20,7 +20,7 @@ include_directories(${gen})
 add_executable(Full WIN32
 	"src/gl_debug.cpp"
 	"src/gl_shader_data.cpp"
-	"src/gl_shader_dev.cpp"
+	"src/gl_shader_full.cpp"
 	"src/gl_windows.cpp"
 	"src/log_standard.cpp"
 	"src/main.cpp"
