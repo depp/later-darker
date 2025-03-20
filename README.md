@@ -44,3 +44,15 @@ In Visual Studio, go to **Debug** → **Debug and Launch Settings for later-dark
 Write the .clangd configuration:
 
     python config.py
+
+## Configuration
+
+Intellisense VCR001 warnings may appear in Visual Studio.
+
+https://developercommunity.visualstudio.com/t/Warning-VCR001---Function-definition-for/10702254
+
+Go to **Tools** → **Options**.
+
+Go to **Text Editor** → **C/C++** → **Intellisense**.
+
+Change **Suggest create declaration/definition suggestion level** to **Refactoring only**.
