@@ -7,7 +7,9 @@ mod emit;
 mod gl;
 mod identifier;
 mod intern;
+mod project;
 mod shader;
+mod xmlgen;
 
 fn main() {
     let cmd = command::Command::parse();

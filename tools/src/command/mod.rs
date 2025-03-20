@@ -1,6 +1,7 @@
 pub mod glemit;
 pub mod glscan;
 pub mod shader;
+pub mod vsgen;
 
 use std::error::Error;
 
@@ -11,14 +12,17 @@ pub enum Command {
     Shader(shader::Args),
     GLScan(glscan::Args),
     GLEmit(glemit::Args),
+    VSGen(vsgen::Args),
 }
 
 impl Command {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
+        use Command::*;
         match self {
-            Command::Shader(c) => c.run(),
-            Command::GLScan(c) => c.run(),
-            Command::GLEmit(c) => c.run(),
+            Shader(c) => c.run(),
+            GLScan(c) => c.run(),
+            GLEmit(c) => c.run(),
+            VSGen(c) => c.run(),
         }
     }
 }
