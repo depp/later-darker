@@ -8,13 +8,18 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+/// Generate OpenGL API bindings.
 #[derive(Parser, Debug)]
 pub struct Args {
+    /// File with list of OpenGL functions, one per line.
     #[arg(long)]
     entry_points: Option<PathBuf>,
 
+    /// Output C++ header file.
     #[arg(long)]
     output_header: Option<PathBuf>,
+
+    /// Output C++ source file.
     #[arg(long)]
     output_data: Option<PathBuf>,
 }

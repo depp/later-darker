@@ -9,10 +9,13 @@ use clap::Parser;
 use crate::emit;
 use crate::identifier;
 
+/// Scan files for usage of OpenGL functions.
 #[derive(Parser, Debug)]
 pub struct Args {
+    /// Source files to scan.
     sources: Vec<PathBuf>,
 
+    /// Output file.
     #[arg(long)]
     output: Option<PathBuf>,
 }

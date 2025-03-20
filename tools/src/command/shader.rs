@@ -7,12 +7,16 @@ use clap::Parser;
 use crate::emit;
 use crate::shader;
 
+/// Bundle OpenGL shaders as C++ code.
 #[derive(Parser, Debug)]
 pub struct Args {
+    /// Path to shader spec file.
     spec: PathBuf,
 
+    /// Output C++ file for shader data.
     output: Option<PathBuf>,
 
+    /// Dump internal information about parsed shaders.
     #[arg(long)]
     dump: bool,
 }
