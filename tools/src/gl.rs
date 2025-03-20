@@ -26,6 +26,7 @@ pub enum ErrorKind {
     DuplicateFunction(String),
     InvalidPrototype,
     AliasConflict(String, String),
+    UnknownType(String),
 }
 
 impl fmt::Display for ErrorKind {
@@ -51,6 +52,7 @@ impl fmt::Display for ErrorKind {
                 "enum {:?} is alias for {:?}, but that has a conflicting definiton",
                 name, alias
             ),
+            UnknownType(name) => write!(f, "unknown type: {:?}", name),
         }
     }
 }
@@ -352,6 +354,14 @@ fn emit_enums<'a>(
                     if emitted.contains_key(name) {
                         return Err(ErrorKind::DuplicateEnum(name.to_string()).at_node(item));
                     }
+                    let ty = match item.attribute("type") {
+                        None => ty,
+                        Some(t) => match t {
+                            "u" => "unsigned",
+                            "ull" => "unsigned long long",
+                            _ => return Err(ErrorKind::UnknownType(t.to_string()).at_node(item)),
+                        },
+                    };
                     let value = require_attribute(item, "value")?;
                     let definition = (ty, value);
                     let value = match item.attribute("alias") {
