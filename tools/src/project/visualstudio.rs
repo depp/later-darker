@@ -1,6 +1,7 @@
 use crate::xmlgen::{Element, XML};
 use arcstr::{ArcStr, literal};
 use std::collections::HashMap;
+use uuid::{Uuid, uuid};
 
 /// A set of Visual Studio project properties.
 #[derive(Debug, Clone)]
@@ -177,14 +178,6 @@ impl Properties {
     }
 }
 
-fn add_files(project: &mut Element, tag: &str, files: &FileList) {
-    let mut group = project.tag("ItemGroup").open();
-    for file in files.iter() {
-        group.tag(tag).attr("Include", file).close();
-    }
-    group.close();
-}
-
 /// A project configuration.
 #[derive(Debug, Clone)]
 pub struct Configuration {
@@ -201,7 +194,7 @@ pub type FileList = Vec<ArcStr>;
 /// Visual Studio project specification.
 #[derive(Debug)]
 pub struct Project {
-    pub guid: uuid::Uuid,
+    pub guid: Uuid,
     pub root_namespace: Option<ArcStr>,
     pub properties: Properties,
     pub configurations: Vec<Configuration>,
@@ -220,7 +213,7 @@ struct PlatformConfig {
 }
 
 impl Project {
-    pub fn new(guid: uuid::Uuid) -> Self {
+    pub fn new(guid: Uuid) -> Self {
         Project {
             guid,
             root_namespace: None,
@@ -399,10 +392,13 @@ impl Project {
         }
 
         // Files.
-        add_files(&mut project, "ClInclude", &self.cl_include);
-        add_files(&mut project, "ClCompile", &self.cl_compile);
-        add_files(&mut project, "ResourceCompile", &self.resource_compile);
-        add_files(&mut project, "Image", &self.image);
+        for (tag, files) in self.file_groups() {
+            let mut group = project.tag("ItemGroup").open();
+            for file in files.iter() {
+                group.tag(tag).attr("Include", file).close();
+            }
+            group.close();
+        }
 
         // Targets.
         project
@@ -420,4 +416,80 @@ impl Project {
 
         doc.finish()
     }
+
+    /// Get all file groups in the project.
+    fn file_groups(&self) -> [(&'static str, &[ArcStr]); 4] {
+        [
+            ("ClInclude", &self.cl_include),
+            ("ClCompile", &self.cl_compile),
+            ("ResourceCompile", &self.resource_compile),
+            ("Image", &self.image),
+        ]
+    }
+
+    /// Generate the contents of the .vcxproj.filters file.
+    pub fn filters(&self) -> String {
+        let mut doc = XML::new();
+        let mut project = doc
+            .root("Project")
+            .attr("ToolsVersion", "4.0")
+            .attr(
+                "xmlns",
+                "http://schemas.microsoft.com/developer/msbuild/2003",
+            )
+            .open();
+
+        let mut extension_map: HashMap<&str, &str> = HashMap::new();
+        for filter in FILTERS.iter() {
+            for ext in filter.extensions.split(';') {
+                extension_map.insert(ext, filter.name);
+            }
+            let mut group = project.tag("Filter").attr("Include", filter.name).open();
+            group
+                .tag("UniqueIdentifier")
+                .text(filter.unique_identifier.braced().to_string());
+            group.tag("Extensions").text(filter.extensions);
+            group.close();
+        }
+        for (tag, files) in self.file_groups() {
+            let mut group = project.tag("ItemGroup").open();
+            for file in files.iter() {
+                let filter = file
+                    .rfind('.')
+                    .and_then(|i| extension_map.get(&file[i + 1..]).copied());
+                let mut item = group.tag(tag).attr("Include", file).open();
+                if let Some(filter) = filter {
+                    item.tag("Filter").text(filter);
+                }
+                item.close();
+            }
+            group.close();
+        }
+        project.close();
+        doc.finish()
+    }
 }
+
+struct Filter {
+    name: &'static str,
+    unique_identifier: Uuid,
+    extensions: &'static str,
+}
+
+const FILTERS: [Filter; 3] = [
+    Filter {
+        name: "Source Files",
+        unique_identifier: uuid!("4FC737F1-C7A5-4376-A066-2A32D752A2FF"),
+        extensions: "cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx",
+    },
+    Filter {
+        name: "Header Files",
+        unique_identifier: uuid!("93995380-89BD-4b04-88EB-625FBE52EBFB"),
+        extensions: "h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd",
+    },
+    Filter {
+        name: "Resource Files",
+        unique_identifier: uuid!("67DA6AB6-F800-4c08-8B7A-83BB121AAD01"),
+        extensions: "rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms",
+    },
+];

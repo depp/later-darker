@@ -28,8 +28,15 @@ impl Args {
         project.resource_compile = make_files(&["LaterDarker.rc"]);
         project.image = make_files(&["LaterDarker.ico", "small.ico"]);
 
-        let data = project.vcxproj();
-        emit::write(&self.output_project, data.as_bytes())?;
+        let mut output_filters = self.output_project.clone();
+        let mut filename = self.output_project.file_name().unwrap().to_os_string();
+        filename.push(".filters");
+        output_filters.set_file_name(filename);
+
+        let vcxproj = project.vcxproj();
+        let filters = project.filters();
+        emit::write(&self.output_project, vcxproj.as_bytes())?;
+        emit::write(&output_filters, filters.as_bytes())?;
         Ok(())
     }
 }
