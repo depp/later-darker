@@ -94,7 +94,7 @@ pub struct Tag<'a> {
 
 impl<'a> Tag<'a> {
     /// Add an attribute to the element.
-    pub fn add_attr(&mut self, name: &str, value: &str) {
+    fn add_attr_str(&mut self, name: &str, value: &str) {
         let delim = choose_delim(value);
         let s = &mut self.xml.text;
         s.push(' ');
@@ -105,9 +105,15 @@ impl<'a> Tag<'a> {
         s.push(delim);
     }
 
+    /// Add an attribute to the element.
+    #[allow(dead_code)]
+    pub fn add_attr(&mut self, name: &str, value: impl AsRef<str>) {
+        self.add_attr_str(name, value.as_ref());
+    }
+
     /// Add an attribute to the element, returning it.
-    pub fn attr(mut self, name: &str, value: &str) -> Self {
-        self.add_attr(name, value);
+    pub fn attr(mut self, name: &str, value: impl AsRef<str>) -> Self {
+        self.add_attr_str(name, value.as_ref());
         self
     }
 
@@ -117,13 +123,18 @@ impl<'a> Tag<'a> {
     }
 
     /// Put text content in the tag and close it.
-    pub fn text(self, text: &str) {
+    fn text_str(self, text: &str) {
         let s = &mut self.xml.text;
         s.push('>');
         quote(s, text, NO_DELIM);
         s.push_str("</");
         s.push_str(self.tag);
         s.push_str(">");
+    }
+
+    /// Put text content in the tag and close it.
+    pub fn text(self, text: impl AsRef<str>) {
+        self.text_str(text.as_ref())
     }
 
     pub fn open(self) -> Element<'a> {

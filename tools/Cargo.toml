@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+arcstr = { version = "1.2.0", features = ["std"] }
 clap = { version = "4.5.32", features = ["derive"] }
 khronos_api = "3.1.0"
 roxmltree = "0.20.0"
+uuid = "1.16.0"
