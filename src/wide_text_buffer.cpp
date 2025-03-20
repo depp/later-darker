@@ -32,7 +32,9 @@ void WideTextBuffer::AppendMultiByte(std::string_view data) {
 		Reserve(data.size());
 		mPos = std::copy(data.data(), data.data() + data.size(), mPos);
 	} else {
-		CHECK(data.size() <= std::numeric_limits<int>::max());
+		constexpr std::size_t max =
+			static_cast<std::size_t>(std::numeric_limits<int>::max());
+		CHECK(data.size() <= max);
 		int nChars = static_cast<int>(data.size());
 		int nWideChars =
 			MultiByteToWideChar(CP_UTF8, 0, data.data(), nChars, nullptr, 0);

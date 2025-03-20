@@ -51,8 +51,9 @@ void Append(std::string *dest, os_string_view value) {
 	if (value.empty()) {
 		return;
 	}
-	// FIXME: This isn't recursive, right?
-	CHECK(value.size() <= std::numeric_limits<int>::max());
+	constexpr std::size_t max =
+		static_cast<std::size_t>(std::numeric_limits<int>::max());
+	CHECK(value.size() <= max);
 	int nWideChars = static_cast<int>(value.size());
 	int nChars = WideCharToMultiByte(CP_UTF8, 0, value.data(), nWideChars,
 	                                 nullptr, 0, nullptr, nullptr);
