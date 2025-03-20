@@ -19,12 +19,6 @@ namespace demo {
 
 namespace gl_api {
 
-[[noreturn]]
-void MissingFunction(const char *name) {
-	(void)name;
-	FAIL("Missing OpenGL entry point.", log::Attr{"name", name});
-}
-
 // Load OpenGL entry points.
 void LoadProcs() {
 	const char *namePtr = FunctionNames;

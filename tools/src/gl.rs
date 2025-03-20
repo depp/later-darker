@@ -520,12 +520,10 @@ fn emit_functions<'a>(
             let (declarations, names) = emit_parameters(item, type_map)?;
             match availability {
                 Availability::Missing => {
-                    write!(
+                    writeln!(
                         out,
-                        "inline {} {}({}) {{\n\
-                        \tdemo::gl_api::MissingFunction(\"{}\");\n\
-                        }}\n",
-                        return_type, name, declarations, name
+                        "{} {}({}); // undefined",
+                        return_type, name, declarations
                     )
                     .unwrap();
                 }
@@ -591,7 +589,6 @@ fn emit_header(enums: &str, functions: &Functions) -> String {
     out.push_str(
         "extern void *FunctionPointers[FunctionPointerCount];\n\
         extern const char FunctionNames[];\n\
-        [[noreturn]] void MissingFunction(const char *name);\n\
         }\n\
         }\n\
         \n\
