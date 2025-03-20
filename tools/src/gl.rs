@@ -599,7 +599,13 @@ fn emit_header(enums: &str, functions: &Functions) -> String {
         \n",
     );
     out.push_str(&enums);
-    out.push_str("\n// Functions\n\nextern \"C\" {\n");
+    out.push_str(
+        "\n\
+        // Functions\n\
+        \n\
+        extern \"C\" {\n\
+        ",
+    );
     out.push_str(&functions.functions);
     out.push_str("}\n");
     out
