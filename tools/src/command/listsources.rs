@@ -31,8 +31,8 @@ impl Args {
 
         let mut out = String::new();
         for src in source_files.sources.iter() {
-            out.push_str(&src.path);
-            if let Some(expr) = &src.build_tag {
+            out.push_str(src.unix_path());
+            if let Some(expr) = src.build_tag() {
                 out.push(' ');
                 out.push_str(&expr.to_string());
             }

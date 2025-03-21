@@ -35,12 +35,11 @@ impl Args {
             .cl_compile
             .set("LanguageStandard", "stdcpp20");
         for file in source_files.sources.iter() {
-            let list = match file.ty {
+            let list = match file.ty() {
                 sources::SourceType::Source => &mut project.cl_compile,
                 sources::SourceType::Header => &mut project.cl_include,
             };
-            let path = file.path.replace('/', "\\");
-            list.push(path.into());
+            list.push(file.windows_path().into());
         }
 
         project.emit(&project_directory, "LaterDarker")?;

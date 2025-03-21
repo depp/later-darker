@@ -30,22 +30,42 @@ impl SourceType {
 /// Information about an individual source file.
 #[derive(Debug, Clone)]
 pub struct Source {
-    pub ty: SourceType,
+    ty: SourceType,
 
     /// Unix-style path.
-    pub path: ArcStr,
+    path: ArcStr,
 
     /// Build tag, if present.
-    pub build_tag: Option<Arc<buildtag::Expression>>,
+    build_tag: Option<Arc<buildtag::Expression>>,
 }
 
 impl Source {
+    /// Get the source type.
+    pub fn ty(&self) -> SourceType {
+        self.ty
+    }
+
+    /// Get the Unix-style, relative path for this source.
+    pub fn unix_path(&self) -> &str {
+        self.path.as_str()
+    }
+
+    /// Get the Windows-style, relative path for this source.
+    pub fn windows_path(&self) -> String {
+        self.path.replace('/', "\\")
+    }
+
     /// Test whether this source is included in the given config.
     pub fn is_in_config(&self, config: &config::Config) -> Result<bool, buildtag::EvalError> {
         match &self.build_tag {
             None => Ok(true),
             Some(expr) => expr.evaluate(|tag| config.eval_tag(tag)),
         }
+    }
+
+    /// Get the build tag for this source file.
+    pub fn build_tag(&self) -> Option<&buildtag::Expression> {
+        self.build_tag.as_deref()
     }
 }
 
