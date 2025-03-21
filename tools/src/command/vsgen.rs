@@ -1,14 +1,8 @@
 use crate::emit;
 use crate::gl;
-use crate::project::config::Config;
-use crate::project::config::Platform;
-use crate::project::config::Variant;
-use crate::project::paths::ProjectPath;
-use crate::project::paths::ProjectRoot;
-use crate::project::sources;
-use crate::project::sources::Source;
-use crate::project::sources::SourceList;
-use crate::project::sources::SourceType;
+use crate::project::config::{Config, Platform, Variant};
+use crate::project::paths::{ProjectPath, ProjectRoot};
+use crate::project::sources::{Source, SourceList, SourceType};
 use crate::project::visualstudio::Project;
 use crate::shader;
 use arcstr::literal;
@@ -58,8 +52,8 @@ impl Args {
         project.enable_vcpkg = true;
         for file in source_files.sources.iter() {
             let list = match file.ty() {
-                sources::SourceType::Source => &mut project.cl_compile,
-                sources::SourceType::Header => &mut project.cl_include,
+                SourceType::Source => &mut project.cl_compile,
+                SourceType::Header => &mut project.cl_include,
             };
             list.push(file.path().clone());
         }
