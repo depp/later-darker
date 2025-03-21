@@ -10,6 +10,7 @@ use crate::project::sources::Source;
 use crate::project::sources::SourceList;
 use crate::project::sources::SourceType;
 use crate::project::visualstudio::Project;
+use crate::shader;
 use arcstr::literal;
 use clap::Parser;
 use std::error::Error;
@@ -38,9 +39,12 @@ impl Args {
         })?;
         let gl_header = Source::new_generated(GL_API_FULL, SourceType::Header)?;
         let gl_source = Source::new_generated(GL_API_FULL, SourceType::Source)?;
-        source_files
-            .sources
-            .extend_from_slice(&[gl_header.clone(), gl_source.clone()]);
+        let shader_data = Source::new_generated("gl_shader_text_full", SourceType::Source)?;
+        source_files.sources.extend_from_slice(&[
+            gl_header.clone(),
+            gl_source.clone(),
+            shader_data.clone(),
+        ]);
         source_files.sort();
         let mut project = Project::new(uuid!("26443e89-4e15-4714-8cec-8ce4b3902761"));
         project.root_namespace = Some(literal!("demo"));
@@ -63,10 +67,20 @@ impl Args {
 
         project.emit(&mut outputs, root.as_path(), "LaterDarker");
 
-        let api = gl::API::generate(None)?;
+        // Generate source fiels.
         outputs.add_directory(root.resolve(&ProjectPath::GENERATED));
+
+        // Generate OpenGL bindings.
+        let api = gl::API::generate(None)?;
         outputs.add_file(root.resolve(&gl_header.path()), api.header);
         outputs.add_file(root.resolve(&gl_source.path()), api.data);
+
+        // Generate shader bundle.
+        let shader_dir = &ProjectPath::SHADER;
+        let manifest = shader::Spec::read_file(&root.resolve(&shader_dir.append("shaders.txt")?))?
+            .to_manifest();
+        let data = shader::Data::read_raw(&manifest, &root.resolve(&shader_dir))?;
+        outputs.add_file(root.resolve(shader_data.path()), data.emit_text()?);
 
         outputs.write()?;
         Ok(())

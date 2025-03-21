@@ -211,6 +211,9 @@ impl ProjectPath {
     /// The generated sources directory.
     pub const GENERATED: Self = ProjectPath(literal!("src/generated"));
 
+    /// The shaders directory.
+    pub const SHADER: Self = ProjectPath(literal!("shader"));
+
     /// Construct a new path by appending a single component to this one.
     pub fn append(&self, name: &str) -> Result<Self, PathError> {
         validate_component(name)?;
