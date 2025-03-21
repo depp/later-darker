@@ -205,6 +205,7 @@ pub struct Project {
     pub cl_compile: FileList,
     pub resource_compile: FileList,
     pub image: FileList,
+    pub enable_vcpkg: bool,
 }
 
 /// Platform and configuration combination.
@@ -235,6 +236,7 @@ impl Project {
             cl_compile: Vec::new(),
             resource_compile: Vec::new(),
             image: Vec::new(),
+            enable_vcpkg: false,
         }
     }
 
@@ -376,6 +378,13 @@ impl Project {
             .tag("PropertyGroup")
             .attr("Label", "UserMacros")
             .close();
+
+        // Vcpkg.
+        if self.enable_vcpkg {
+            let mut group = project.tag("PropertyGroup").attr("Label", "Vcpkg").open();
+            group.tag("VcpkgEnableManifest").text("true");
+            group.close();
+        }
 
         // Compile and link settings.
         for config in platform_configs.iter() {

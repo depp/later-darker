@@ -52,6 +52,7 @@ impl Args {
             "AdditionalIncludeDirectories",
             "$(ProjectDir)src\\generated\\;%(AdditionalIncludeDirectories)",
         );
+        project.enable_vcpkg = true;
         for file in source_files.sources.iter() {
             let list = match file.ty() {
                 sources::SourceType::Source => &mut project.cl_compile,
