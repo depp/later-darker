@@ -199,6 +199,7 @@ pub type FileList = Vec<ProjectPath>;
 pub struct Project {
     pub guid: Uuid,
     pub root_namespace: Option<ArcStr>,
+    pub property_sheets: Vec<ArcStr>,
     pub properties: Properties,
     pub configurations: Vec<Configuration>,
     pub cl_include: FileList,
@@ -221,6 +222,7 @@ impl Project {
         Project {
             guid,
             root_namespace: None,
+            property_sheets: Vec::new(),
             properties: Properties::new(),
             configurations: vec![
                 Configuration {
@@ -370,6 +372,9 @@ impl Project {
                 )
                 .attr("Label", "LocalAppDataPlatform")
                 .close();
+            for sheet in self.property_sheets.iter() {
+                group.tag("Import").attr("Project", sheet).close();
+            }
             group.close();
         }
 

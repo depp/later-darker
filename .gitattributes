@@ -2,3 +2,4 @@
 *.vcxproj   eol=crlf
 *.vcxproj.filters   eol=crlf
 *.sln   eol=crlf
+*.props eol=crlf

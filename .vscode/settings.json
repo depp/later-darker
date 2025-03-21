@@ -1,3 +1,7 @@
 {
-  "cmake.configureArgs": ["-DCMAKE_COMPILE_WARNING_AS_ERROR=YES"]
+  "cmake.configureArgs": ["-DCMAKE_COMPILE_WARNING_AS_ERROR=YES"],
+  "[xml]": {
+    "editor.tabSize": 2,
+    "editor.useTabStops": false
+  }
 }

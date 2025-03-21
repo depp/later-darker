@@ -1,15 +1,15 @@
 # Visual Studio configuration files.
 /.vs/
+/*.vcxproj.user
 
 # Generated.
 /*.vcxproj
 /*.vcxproj.filters
-/*.vcxproj.user
 /src/generated/
 
 # Build directory.
-/out/
-/LaterDarker/
+/bin/
+/build/
 
 # Vcpkg dependencies.
 /vcpkg_installed/

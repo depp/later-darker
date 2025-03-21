@@ -47,15 +47,10 @@ impl Args {
         ]);
         source_files.sort();
         let mut project = Project::new(uuid!("26443e89-4e15-4714-8cec-8ce4b3902761"));
-        project.root_namespace = Some(literal!("demo"));
         project
-            .properties
-            .cl_compile
-            .set("LanguageStandard", "stdcpp20");
-        project.properties.cl_compile.set(
-            "AdditionalIncludeDirectories",
-            "$(ProjectDir)src\\generated\\;%(AdditionalIncludeDirectories)",
-        );
+            .property_sheets
+            .push(literal!("support\\Common.props"));
+        project.root_namespace = Some(literal!("demo"));
         project.properties.link.set(
             "AdditionalDependencies",
             "opengl32.lib;%(AdditionalDependencies)",
