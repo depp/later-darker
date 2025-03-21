@@ -1,3 +1,6 @@
+use crate::project::config::Config;
+use crate::project::config::Platform;
+use crate::project::config::Variant;
 use crate::project::paths;
 use crate::project::sources;
 use crate::project::visualstudio::Project;
@@ -21,8 +24,16 @@ impl Args {
             paths::find_project_directory_or(self.project_directory.as_deref())?;
         let source_files = sources::SourceList::scan(&project_directory)?;
 
+        let source_files = source_files.filter(&Config {
+            platform: Platform::Windows,
+            variant: Variant::Full,
+        })?;
         let mut project = Project::new(uuid!("26443e89-4e15-4714-8cec-8ce4b3902761"));
         project.root_namespace = Some(literal!("demo"));
+        project
+            .properties
+            .cl_compile
+            .set("LanguageStandard", "stdcpp20");
         for file in source_files.sources.iter() {
             let list = match file.ty {
                 sources::SourceType::Source => &mut project.cl_compile,

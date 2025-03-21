@@ -4,9 +4,11 @@
 # Generated.
 /*.vcxproj
 /*.vcxproj.filters
+/*.vcxproj.user
 
 # Build directory.
 /out/
+/LaterDarker/
 
 # Vcpkg dependencies.
 /vcpkg_installed/

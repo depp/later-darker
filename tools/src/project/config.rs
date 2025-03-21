@@ -68,8 +68,8 @@ impl FromStr for Platform {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Config {
-    platform: Platform,
-    variant: Variant,
+    pub platform: Platform,
+    pub variant: Variant,
 }
 
 impl Config {
