@@ -1,7 +1,7 @@
 use crate::project::config::Config;
 use crate::project::config::Platform;
 use crate::project::config::Variant;
-use crate::project::paths;
+use crate::project::paths::ProjectRoot;
 use crate::project::sources;
 use crate::project::visualstudio::Project;
 use arcstr::literal;
@@ -20,8 +20,7 @@ pub struct Args {
 
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
-        let project_directory =
-            paths::find_project_directory_or(self.project_directory.as_deref())?;
+        let project_directory = ProjectRoot::find_or(self.project_directory.as_deref())?;
         let source_files = sources::SourceList::scan(&project_directory)?;
 
         let source_files = source_files.filter(&Config {
@@ -39,10 +38,10 @@ impl Args {
                 sources::SourceType::Source => &mut project.cl_compile,
                 sources::SourceType::Header => &mut project.cl_include,
             };
-            list.push(file.windows_path().into());
+            list.push(file.path().windows().into());
         }
 
-        project.emit(&project_directory, "LaterDarker")?;
+        project.emit(project_directory.root().full(), "LaterDarker")?;
         Ok(())
     }
 }

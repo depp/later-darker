@@ -1,7 +1,6 @@
 use super::buildtag;
 use super::config;
-use super::paths;
-use arcstr::ArcStr;
+use super::paths::{ProjectPath, ProjectRoot};
 use std::error;
 use std::ffi::OsStr;
 use std::fmt;
@@ -32,8 +31,7 @@ impl SourceType {
 pub struct Source {
     ty: SourceType,
 
-    /// Unix-style path.
-    path: ArcStr,
+    path: ProjectPath,
 
     /// Build tag, if present.
     build_tag: Option<Arc<buildtag::Expression>>,
@@ -46,13 +44,8 @@ impl Source {
     }
 
     /// Get the Unix-style, relative path for this source.
-    pub fn unix_path(&self) -> &str {
-        self.path.as_str()
-    }
-
-    /// Get the Windows-style, relative path for this source.
-    pub fn windows_path(&self) -> String {
-        self.path.replace('/', "\\")
+    pub fn path(&self) -> &ProjectPath {
+        &self.path
     }
 
     /// Test whether this source is included in the given config.
@@ -71,15 +64,15 @@ impl Source {
 
 #[derive(Debug)]
 pub enum ScanError {
-    IO(PathBuf, io::Error),
-    BuildTag(PathBuf, BuildTagError),
+    IO(ProjectPath, io::Error),
+    BuildTag(ProjectPath, BuildTagError),
 }
 
 impl fmt::Display for ScanError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ScanError::IO(p, e) => write!(f, "{}: list files: {}", p.display(), e),
-            ScanError::BuildTag(p, e) => write!(f, "{}: get build tag: {}", p.display(), e),
+            ScanError::IO(p, e) => write!(f, "{}: list files: {}", p, e),
+            ScanError::BuildTag(p, e) => write!(f, "{}: get build tag: {}", p, e),
         }
     }
 }
@@ -87,7 +80,7 @@ impl fmt::Display for ScanError {
 impl error::Error for ScanError {}
 
 #[derive(Debug, Clone)]
-pub struct FilterError(pub ArcStr, pub buildtag::EvalError);
+pub struct FilterError(ProjectPath, pub buildtag::EvalError);
 
 impl fmt::Display for FilterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -100,7 +93,7 @@ impl error::Error for FilterError {}
 /// A list of source files.
 #[derive(Debug, Clone)]
 pub struct SourceList {
-    pub sources: Vec<Source>,
+    pub sources: Vec<Arc<Source>>,
 }
 
 /// Get the build tag associated with a file.
@@ -112,10 +105,10 @@ fn build_tag_from_filename(name: &str) -> Option<&str> {
 
 impl SourceList {
     /// Scan the project root directory for source files.
-    pub fn scan(directory: &Path) -> Result<Self, ScanError> {
-        let src = directory.join(paths::SRC);
-        let mut sources: Vec<Source> = Vec::new();
-        let items = match fs::read_dir(&src) {
+    pub fn scan(project_root: &ProjectRoot) -> Result<Self, ScanError> {
+        let src = project_root.src();
+        let mut sources: Vec<Arc<Source>> = Vec::new();
+        let items = match fs::read_dir(src.full()) {
             Ok(items) => items,
             Err(e) => return Err(ScanError::IO(src, e)),
         };
@@ -138,8 +131,14 @@ impl SourceList {
             if name.starts_with('.') || name.starts_with('_') {
                 continue;
             }
-            let path = src.join(&name);
-            let build_tag = match read_build_tag(&path) {
+            let path = match src.join(&name) {
+                Ok(path) => path,
+                Err(e) => {
+                    eprintln!("Warning: invalid filename: {}", e);
+                    continue;
+                }
+            };
+            let build_tag = match read_build_tag(path.full()) {
                 Ok(e) => e,
                 Err(e) => return Err(ScanError::BuildTag(path, e)),
             };
@@ -150,13 +149,13 @@ impl SourceList {
                 },
                 Some(value) => Some(value),
             };
-            sources.push(Source {
+            sources.push(Arc::new(Source {
                 ty,
-                path: format!("{}/{}", paths::SRC, name).into(),
+                path,
                 build_tag: build_tag.map(Arc::new),
-            });
+            }));
         }
-        sources.sort_by(|x, y| x.path.cmp(&y.path));
+        sources.sort_by(|x, y| x.path.unix().cmp(y.path.unix()));
         Ok(SourceList { sources })
     }
 

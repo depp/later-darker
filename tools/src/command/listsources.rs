@@ -19,8 +19,7 @@ pub struct Args {
 
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
-        let project_directory =
-            paths::find_project_directory_or(self.project_directory.as_deref())?;
+        let project_directory = paths::ProjectRoot::find_or(self.project_directory.as_deref())?;
         let mut source_files = sources::SourceList::scan(&project_directory)?;
         if let Some(config) = &self.config {
             let n = source_files.sources.len();
@@ -31,7 +30,7 @@ impl Args {
 
         let mut out = String::new();
         for src in source_files.sources.iter() {
-            out.push_str(src.unix_path());
+            out.push_str(src.path().unix());
             if let Some(expr) = src.build_tag() {
                 out.push(' ');
                 out.push_str(&expr.to_string());
