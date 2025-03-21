@@ -1,6 +1,154 @@
+use arcstr::ArcStr;
 use core::fmt;
 use std::error;
 use std::str;
+
+// ============================================================================
+// Errors
+// ============================================================================
+
+/// Error when parsing a build expression.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParseError {
+    InvalidToken,
+    InvalidSyntax,
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(match self {
+            ParseError::InvalidToken => "invalid token",
+            ParseError::InvalidSyntax => "invalid syntax",
+        })
+    }
+}
+
+impl error::Error for ParseError {}
+
+/// Error when evaluating a build expression.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EvalError(pub ArcStr);
+
+impl fmt::Display for EvalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "undefined identifier: {}", self.0)
+    }
+}
+
+impl error::Error for EvalError {}
+
+// ============================================================================
+// Expression
+// ============================================================================
+
+/// A build tag expression.
+#[derive(Debug)]
+pub struct Expression(Expr);
+
+impl Expression {
+    /// Parse a build expression.
+    pub fn parse(text: &[u8]) -> Result<Self, ParseError> {
+        let mut parser = Parser {
+            text,
+            tok: Tok::End,
+            value: "",
+        };
+        parser.next_token();
+        let value = parser.parse_or();
+        if parser.tok == Tok::Error {
+            return Err(ParseError::InvalidToken);
+        }
+        let expr = value?;
+        if parser.tok != Tok::End {
+            return Err(ParseError::InvalidSyntax);
+        }
+        Ok(Expression(expr))
+    }
+
+    /// Evaluate the expression.
+    pub fn evaluate<F>(&self, eval_atom: &F) -> Result<bool, EvalError>
+    where
+        F: Fn(&str) -> Option<bool>,
+    {
+        self.0.evaluate(eval_atom)
+    }
+}
+
+impl ToString for Expression {
+    fn to_string(&self) -> String {
+        let mut out = String::new();
+        self.0.write(&mut out, 0);
+        out
+    }
+}
+
+/// A build tag expression.
+#[derive(Debug, PartialEq, Eq)]
+enum Expr {
+    Atom(ArcStr),
+    Not(Box<Expr>),
+    And(Box<Expr>, Box<Expr>),
+    Or(Box<Expr>, Box<Expr>),
+}
+
+/// Helper for writing binary expressions.
+fn write_binary(lhs: &Expr, rhs: &Expr, out: &mut String, prec: i32, op_prec: i32, symbol: &str) {
+    let group = prec > op_prec;
+    if group {
+        out.push('(');
+    }
+    lhs.write(out, op_prec);
+    out.push(' ');
+    out.push_str(symbol);
+    out.push(' ');
+    rhs.write(out, op_prec);
+    if group {
+        out.push(')');
+    }
+}
+
+impl Expr {
+    /// Write an expression in the given precedence context. The initial context
+    /// is 0, and higher contexts bind more tightly.
+    fn write(&self, out: &mut String, prec: i32) {
+        match self {
+            Expr::Atom(atom) => out.push_str(atom),
+            Expr::Not(expr) => {
+                out.push('!');
+                expr.write(out, 2);
+            }
+            Expr::And(lhs, rhs) => write_binary(lhs, rhs, out, prec, 1, "&&"),
+            Expr::Or(lhs, rhs) => write_binary(lhs, rhs, out, prec, 0, "||"),
+        }
+    }
+
+    pub fn evaluate<F>(&self, eval_atom: &F) -> Result<bool, EvalError>
+    where
+        F: Fn(&str) -> Option<bool>,
+    {
+        Ok(match self {
+            Expr::Atom(atom) => match eval_atom(atom) {
+                None => return Err(EvalError(atom.clone())),
+                Some(value) => value,
+            },
+            Expr::Not(expr) => !expr.evaluate(eval_atom)?,
+            Expr::And(lhs, rhs) => {
+                let lhs = lhs.evaluate(eval_atom)?;
+                let rhs = rhs.evaluate(eval_atom)?;
+                lhs && rhs
+            }
+            Expr::Or(lhs, rhs) => {
+                let lhs = lhs.evaluate(eval_atom)?;
+                let rhs = rhs.evaluate(eval_atom)?;
+                lhs || rhs
+            }
+        })
+    }
+}
+
+// ============================================================================
+// Parsing
+// ============================================================================
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Tok {
@@ -14,14 +162,13 @@ enum Tok {
     Or,
 }
 
-struct Evaluator<'a> {
-    atoms: &'a dyn Atoms,
+struct Parser<'a> {
     text: &'a [u8],
     tok: Tok,
     value: &'a str,
 }
 
-impl<'a> Evaluator<'a> {
+impl<'a> Parser<'a> {
     fn next_token(&mut self) {
         let start = self.text.trim_ascii_start();
         self.tok = Tok::Error;
@@ -63,175 +210,117 @@ impl<'a> Evaluator<'a> {
         self.tok = tok;
     }
 
-    fn eval_or(&mut self) -> Result<bool, Error> {
-        let mut value = self.eval_and()?;
+    fn parse_or(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.parse_and()?;
         while self.tok == Tok::Or {
             self.next_token();
-            let rhs = self.eval_and()?;
-            value = value || rhs;
+            let rhs = self.parse_and()?;
+            expr = Expr::Or(Box::new(expr), Box::new(rhs));
         }
-        Ok(value)
+        Ok(expr)
     }
 
-    fn eval_and(&mut self) -> Result<bool, Error> {
-        let mut value = self.eval_not()?;
+    fn parse_and(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.parse_not()?;
         while self.tok == Tok::And {
             self.next_token();
-            let rhs = self.eval_not()?;
-            value = value && rhs;
+            let rhs = self.parse_not()?;
+            expr = Expr::And(Box::new(expr), Box::new(rhs));
         }
-        Ok(value)
+        Ok(expr)
     }
 
-    fn eval_not(&mut self) -> Result<bool, Error> {
+    fn parse_not(&mut self) -> Result<Expr, ParseError> {
         let mut flip = false;
         while self.tok == Tok::Not {
             self.next_token();
             flip = !flip;
         }
-        let value = self.eval_atom()?;
-        Ok(if flip { !value } else { value })
+        let expr = self.parse_atom()?;
+        Ok(if flip {
+            Expr::Not(Box::new(expr))
+        } else {
+            expr
+        })
     }
 
-    fn eval_atom(&mut self) -> Result<bool, Error> {
+    fn parse_atom(&mut self) -> Result<Expr, ParseError> {
         match self.tok {
-            Tok::Atom => match self.atoms.evaluate(self.value) {
-                None => Err(Error::UnknownAtom(self.value.to_string())),
-                Some(value) => {
-                    self.next_token();
-                    Ok(value)
-                }
-            },
+            Tok::Atom => {
+                let expr = Expr::Atom(ArcStr::from(self.value));
+                self.next_token();
+                Ok(expr)
+            }
             Tok::Open => {
                 self.next_token();
-                let expr = self.eval_or()?;
+                let expr = self.parse_or()?;
                 if self.tok != Tok::Close {
-                    return Err(Error::InvalidSyntax);
+                    return Err(ParseError::InvalidSyntax);
                 }
                 self.next_token();
                 Ok(expr)
             }
-            _ => Err(Error::InvalidSyntax),
+            _ => Err(ParseError::InvalidSyntax),
         }
     }
-}
-
-/// Error when evaluating a build tag.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Error {
-    InvalidToken,
-    InvalidSyntax,
-    UnknownAtom(String),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::InvalidToken => f.write_str("invalid token"),
-            Error::InvalidSyntax => f.write_str("invalid syntax"),
-            Error::UnknownAtom(name) => write!(f, "unknown identifier in build tag: {}", name),
-        }
-    }
-}
-
-impl error::Error for Error {}
-
-pub fn evaluate(atoms: &dyn Atoms, text: &[u8]) -> Result<bool, Error> {
-    let mut evaluator = Evaluator {
-        text,
-        tok: Tok::End,
-        value: "",
-        atoms,
-    };
-    evaluator.next_token();
-    let value = evaluator.eval_or();
-    if evaluator.tok == Tok::Error {
-        return Err(Error::InvalidToken);
-    }
-    let value = value?;
-    if evaluator.tok != Tok::End {
-        return Err(Error::InvalidSyntax);
-    }
-    Ok(value)
-}
-
-/// Build token atom lookup.
-pub trait Atoms {
-    /// Evaluate an atom, or return None if the atom does not exist.
-    fn evaluate(&self, atom: &str) -> Option<bool>;
 }
 
 #[cfg(test)]
 mod test {
-    use super::{Atoms, Error, evaluate};
+    use arcstr::ArcStr;
 
-    struct SimpleAtoms([bool; 3]);
+    use super::{Expr, Expression, ParseError};
 
-    impl Atoms for SimpleAtoms {
-        fn evaluate(&self, atom: &str) -> Option<bool> {
-            Some(match atom {
-                "true" => true,
-                "false" => false,
-                "x" => self.0[0],
-                "y" => self.0[1],
-                "z" => self.0[2],
-                _ => return None,
-            })
-        }
+    fn check_parse(text: &str, expected: Expr) {
+        let result = Expression::parse(text.as_bytes()).expect("Parsing should succeed.");
+        assert_eq!(result.0, expected);
     }
 
-    fn check(text: &str, result: bool) {
-        let value =
-            evaluate(&SimpleAtoms([false; 3]), text.as_bytes()).expect("Evaluation should succeed");
-        assert_eq!(result, value);
+    fn check_err(text: &str, err: ParseError) {
+        let result = Expression::parse(text.as_bytes()).expect_err("Parsing should fail.");
+        assert_eq!(result, err);
     }
 
-    fn check_matrix(text: &str, f: fn(x: bool, y: bool, z: bool) -> bool) {
-        for n in 0..8 {
-            let x = n & 4 != 0;
-            let y = n & 2 != 0;
-            let z = n & 1 != 0;
-            let value = evaluate(&SimpleAtoms([x, y, z]), text.as_bytes())
-                .expect("Evaluation should succeed");
-            let expect = f(x, y, z);
-            assert_eq!(value, expect);
-        }
+    fn var(x: &'static str) -> Expr {
+        Expr::Atom(ArcStr::from(x))
     }
 
-    fn check_err(text: &str, err: Error) {
-        let value = evaluate(&SimpleAtoms([false; 3]), text.as_bytes());
-        assert_eq!(value, Err(err) as Result<bool, Error>);
+    fn enot(x: Expr) -> Expr {
+        Expr::Not(Box::new(x))
+    }
+
+    fn eor(x: Expr, y: Expr) -> Expr {
+        Expr::Or(Box::new(x), Box::new(y))
+    }
+
+    fn eand(x: Expr, y: Expr) -> Expr {
+        Expr::And(Box::new(x), Box::new(y))
     }
 
     #[test]
-    fn test_atom() {
-        check("true", true);
-        check("false", false);
-        check("  true  ", true);
-        check_err("unknown", Error::UnknownAtom("unknown".to_string()));
+    fn test_parse_atom() {
+        check_parse("true", var("true"));
+        check_parse("  false  ", var("false"));
     }
 
     #[test]
-    fn test_and() {
-        check_matrix("x && y", |x, y, _| x && y);
-        check_matrix("x&&y&&z", |x, y, z| x && y && z);
+    fn test_parse_op() {
+        check_parse("x && y", eand(var("x"), var("y")));
+        check_parse("!x", enot(var("x")));
+        check_parse("x && y || z", eor(eand(var("x"), var("y")), var("z")));
+        check_parse("x || y && z", eor(var("x"), eand(var("y"), var("z"))));
+        check_parse(
+            "(x&&((z||!a)))",
+            eand(var("x"), eor(var("z"), enot(var("a")))),
+        );
     }
 
     #[test]
-    fn test_or() {
-        check_matrix("x || y", |x, y, _| x || y);
-        check_matrix("x||y||z", |x, y, z| x || y || z);
-    }
-
-    #[test]
-    fn test_not() {
-        check_matrix("!x", |x, _, _| !x);
-        check_matrix("!!x", |x, _, _| x);
-    }
-
-    #[test]
-    fn test_precedence() {
-        check_matrix("!x && y || !z", |x, y, z| !x && y || !z);
-        check_matrix("!x && (y || !z)", |x, y, z| !x && (y || !z));
+    fn test_fail() {
+        check_err("", ParseError::InvalidSyntax);
+        check_err("&&", ParseError::InvalidSyntax);
+        check_err("(x", ParseError::InvalidSyntax);
+        check_err("x && y ||", ParseError::InvalidSyntax);
+        check_err("x y", ParseError::InvalidSyntax);
     }
 }
