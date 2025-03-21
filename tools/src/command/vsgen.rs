@@ -38,10 +38,10 @@ impl Args {
                 sources::SourceType::Source => &mut project.cl_compile,
                 sources::SourceType::Header => &mut project.cl_include,
             };
-            list.push(file.path().windows().into());
+            list.push(file.path().to_windows().into());
         }
 
-        project.emit(project_directory.root().full(), "LaterDarker")?;
+        project.emit(project_directory.as_path(), "LaterDarker")?;
         Ok(())
     }
 }

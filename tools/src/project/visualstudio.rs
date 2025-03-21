@@ -6,6 +6,8 @@ use std::io;
 use std::path::Path;
 use uuid::{Uuid, uuid};
 
+use super::paths::ProjectRoot;
+
 /// A set of Visual Studio project properties.
 #[derive(Debug, Clone)]
 pub struct PropertyMap(HashMap<ArcStr, Option<ArcStr>>);

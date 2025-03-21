@@ -1,5 +1,6 @@
 use super::buildtag;
 use super::config;
+use super::paths;
 use super::paths::{ProjectPath, ProjectRoot};
 use std::error;
 use std::ffi::OsStr;
@@ -10,6 +11,9 @@ use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+const SOURCE_EXTENSION: &str = "cpp";
+const HEADER_EXTENSION: &str = "hpp";
+
 #[derive(Debug, Clone, Copy)]
 pub enum SourceType {
     Source,
@@ -17,16 +21,28 @@ pub enum SourceType {
 }
 
 impl SourceType {
-    fn for_extension(ext: &OsStr) -> Option<Self> {
-        match ext.to_str()? {
-            "cpp" => Some(SourceType::Source),
-            "hpp" => Some(SourceType::Header),
-            _ => None,
+    fn extension(&self) -> &'static str {
+        match self {
+            SourceType::Source => SOURCE_EXTENSION,
+            SourceType::Header => HEADER_EXTENSION,
         }
+    }
+
+    fn for_extension(ext: &str) -> Option<Self> {
+        Some(match ext {
+            SOURCE_EXTENSION => SourceType::Source,
+            HEADER_EXTENSION => SourceType::Header,
+            _ => return None,
+        })
+    }
+
+    fn for_filename(name: &str) -> Option<Self> {
+        let (_, extension) = name.rsplit_once('.')?;
+        Self::for_extension(extension)
     }
 }
 
-/// Information about an individual source file.
+/// Information about an individual source file in the project.
 #[derive(Debug, Clone)]
 pub struct Source {
     ty: SourceType,
@@ -38,6 +54,17 @@ pub struct Source {
 }
 
 impl Source {
+    /// Create a new generated source file.
+    pub fn new_generated(name: &str, ty: SourceType) -> Result<Arc<Self>, paths::PathError> {
+        let full_name = [name, ty.extension()].join(".");
+        let path = paths::ProjectPath::GENERATED.append(&full_name)?;
+        Ok(Arc::new(Source {
+            ty,
+            path,
+            build_tag: None,
+        }))
+    }
+
     /// Get the source type.
     pub fn ty(&self) -> SourceType {
         self.ty
@@ -106,39 +133,38 @@ fn build_tag_from_filename(name: &str) -> Option<&str> {
 impl SourceList {
     /// Scan the project root directory for source files.
     pub fn scan(project_root: &ProjectRoot) -> Result<Self, ScanError> {
-        let src = project_root.src();
+        let directory = &ProjectPath::SRC;
         let mut sources: Vec<Arc<Source>> = Vec::new();
-        let items = match fs::read_dir(src.full()) {
+        let items = match fs::read_dir(&project_root.resolve(directory)) {
             Ok(items) => items,
-            Err(e) => return Err(ScanError::IO(src, e)),
+            Err(e) => return Err(ScanError::IO(ProjectPath::SRC.clone(), e)),
         };
         for item in items {
             let item = match item {
                 Ok(item) => item,
-                Err(e) => return Err(ScanError::IO(src, e)),
+                Err(e) => return Err(ScanError::IO(ProjectPath::SRC.clone(), e)),
             };
-            let name = PathBuf::from(item.file_name());
-            let Some(ty) = name.extension().and_then(SourceType::for_extension) else {
-                continue;
-            };
-            let name = match name.into_os_string().into_string() {
+            let name = match item.file_name().into_string() {
                 Ok(name) => name,
                 Err(name) => {
-                    eprintln!("Warning: invalid filename: {:?}", name);
+                    eprintln!("Warning: bad filename encoding: {:?}", name);
                     continue;
                 }
             };
             if name.starts_with('.') || name.starts_with('_') {
                 continue;
             }
-            let path = match src.join(&name) {
+            let Some(ty) = SourceType::for_filename(&name) else {
+                continue;
+            };
+            let path = match directory.append(&name) {
                 Ok(path) => path,
                 Err(e) => {
-                    eprintln!("Warning: invalid filename: {}", e);
+                    eprintln!("Warning: bad filename {:?}: {}", name, e);
                     continue;
                 }
             };
-            let build_tag = match read_build_tag(path.full()) {
+            let build_tag = match read_build_tag(&project_root.resolve(&path)) {
                 Ok(e) => e,
                 Err(e) => return Err(ScanError::BuildTag(path, e)),
             };
@@ -155,7 +181,6 @@ impl SourceList {
                 build_tag: build_tag.map(Arc::new),
             }));
         }
-        sources.sort_by(|x, y| x.path.unix().cmp(y.path.unix()));
         Ok(SourceList { sources })
     }
 
@@ -173,6 +198,12 @@ impl SourceList {
             }
         }
         Ok(SourceList { sources })
+    }
+
+    /// Sort the sources by path.
+    pub fn sort(&mut self) {
+        self.sources
+            .sort_by(|x, y| x.path.as_str().cmp(y.path.as_str()));
     }
 }
 

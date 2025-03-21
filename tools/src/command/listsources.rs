@@ -27,10 +27,11 @@ impl Args {
             let m = source_files.sources.len();
             eprintln!("Config: {} / {} sources", m, n);
         }
+        source_files.sort();
 
         let mut out = String::new();
         for src in source_files.sources.iter() {
-            out.push_str(src.path().unix());
+            out.push_str(src.path().as_str());
             if let Some(expr) = src.build_tag() {
                 out.push(' ');
                 out.push_str(&expr.to_string());
