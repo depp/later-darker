@@ -1,9 +1,14 @@
 use crate::emit;
+use crate::gl;
 use crate::project::config::Config;
 use crate::project::config::Platform;
 use crate::project::config::Variant;
+use crate::project::paths::ProjectPath;
 use crate::project::paths::ProjectRoot;
 use crate::project::sources;
+use crate::project::sources::Source;
+use crate::project::sources::SourceList;
+use crate::project::sources::SourceType;
 use crate::project::visualstudio::Project;
 use arcstr::literal;
 use clap::Parser;
@@ -19,16 +24,24 @@ pub struct Args {
     project_directory: Option<PathBuf>,
 }
 
+const GL_API_FULL: &str = "gl_api_full";
+
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
-        let project_directory = ProjectRoot::find_or(self.project_directory.as_deref())?;
-        let source_files = sources::SourceList::scan(&project_directory)?;
+        let root = ProjectRoot::find_or(self.project_directory.as_deref())?;
+        let source_files = SourceList::scan(&root)?;
         let mut outputs = emit::Outputs::new();
 
-        let source_files = source_files.filter(&Config {
+        let mut source_files = source_files.filter(&Config {
             platform: Platform::Windows,
             variant: Variant::Full,
         })?;
+        let gl_header = Source::new_generated(GL_API_FULL, SourceType::Header)?;
+        let gl_source = Source::new_generated(GL_API_FULL, SourceType::Source)?;
+        source_files
+            .sources
+            .extend_from_slice(&[gl_header.clone(), gl_source.clone()]);
+        source_files.sort();
         let mut project = Project::new(uuid!("26443e89-4e15-4714-8cec-8ce4b3902761"));
         project.root_namespace = Some(literal!("demo"));
         project
@@ -43,7 +56,13 @@ impl Args {
             list.push(file.path().clone());
         }
 
-        project.emit(&mut outputs, project_directory.as_path(), "LaterDarker");
+        project.emit(&mut outputs, root.as_path(), "LaterDarker");
+
+        let api = gl::API::generate(None)?;
+        outputs.add_directory(root.resolve(&ProjectPath::GENERATED));
+        outputs.add_file(root.resolve(&gl_header.path()), api.header);
+        outputs.add_file(root.resolve(&gl_source.path()), api.data);
+
         outputs.write()?;
         Ok(())
     }

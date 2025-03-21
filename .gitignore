@@ -5,6 +5,7 @@
 /*.vcxproj
 /*.vcxproj.filters
 /*.vcxproj.user
+/src/generated/
 
 # Build directory.
 /out/

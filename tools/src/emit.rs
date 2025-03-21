@@ -76,12 +76,22 @@ pub fn write_or_stdout(path: Option<&Path>, contents: &[u8]) -> io::Result<()> {
 
 /// A collection of outputs to emit.
 pub struct Outputs {
+    directories: Vec<PathBuf>,
     files: Vec<(PathBuf, Vec<u8>)>,
 }
 
 impl Outputs {
+    /// Create a new, empty set of outputs.
     pub fn new() -> Self {
-        Outputs { files: Vec::new() }
+        Outputs {
+            directories: Vec::new(),
+            files: Vec::new(),
+        }
+    }
+
+    /// Add a directory to the outputs.
+    pub fn add_directory(&mut self, path: impl Into<PathBuf>) {
+        self.directories.push(path.into());
     }
 
     /// Add a file to the outputs.
@@ -91,6 +101,15 @@ impl Outputs {
 
     /// Write outputs to the filesystem.
     pub fn write(self) -> io::Result<()> {
+        for path in self.directories {
+            match fs::create_dir(path) {
+                Ok(()) => (),
+                Err(e) => match e.kind() {
+                    io::ErrorKind::AlreadyExists => (),
+                    _ => return Err(e),
+                },
+            }
+        }
         for (path, data) in self.files {
             write(&path, &data)?;
         }

@@ -24,7 +24,9 @@ impl error::Error for NoProjectDirectory {}
 /// Error that indicates a path is invalid.
 #[derive(Debug)]
 pub enum PathError {
+    #[allow(dead_code)]
     LeadingSlash,
+    #[allow(dead_code)]
     TrailingSlash,
     EmptyComponent,
     InvalidComponent(&'static str),
@@ -180,6 +182,7 @@ fn validate_component(component: &str) -> Result<(), PathError> {
 }
 
 /// Validate that a path is safe to use in a project.
+#[allow(dead_code)]
 fn validate_path(path: &str) -> Result<(), PathError> {
     if path.starts_with("/") {
         return Err(PathError::LeadingSlash);
@@ -199,6 +202,7 @@ pub struct ProjectPath(ArcStr);
 
 impl ProjectPath {
     /// The top-level project directory.
+    #[allow(dead_code)]
     pub const ROOT: Self = ProjectPath(literal!("."));
 
     /// The src directory.
@@ -223,6 +227,7 @@ impl ProjectPath {
     }
 
     /// Construct a new path.
+    #[allow(dead_code)]
     pub fn new(&self, name: &str) -> Result<Self, PathError> {
         Ok(if name == "." {
             ProjectPath::ROOT
