@@ -39,6 +39,16 @@ pub struct Source {
     pub build_tag: Option<Arc<buildtag::Expression>>,
 }
 
+impl Source {
+    /// Test whether this source is included in the given config.
+    pub fn is_in_config(&self, config: &config::Config) -> Result<bool, buildtag::EvalError> {
+        match &self.build_tag {
+            None => Ok(true),
+            Some(expr) => expr.evaluate(|tag| config.eval_tag(tag)),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum ScanError {
     IO(PathBuf, io::Error),
@@ -55,6 +65,17 @@ impl fmt::Display for ScanError {
 }
 
 impl error::Error for ScanError {}
+
+#[derive(Debug, Clone)]
+pub struct FilterError(pub ArcStr, pub buildtag::EvalError);
+
+impl fmt::Display for FilterError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.0, self.1)
+    }
+}
+
+impl error::Error for FilterError {}
 
 /// A list of source files.
 #[derive(Debug, Clone)]
@@ -116,6 +137,22 @@ impl SourceList {
             });
         }
         sources.sort_by(|x, y| x.path.cmp(&y.path));
+        Ok(SourceList { sources })
+    }
+
+    /// Filter sources that apply to a build configuration.
+    pub fn filter(&self, config: &config::Config) -> Result<Self, FilterError> {
+        let mut sources = Vec::with_capacity(self.sources.len());
+        for src in self.sources.iter() {
+            match src.is_in_config(config) {
+                Ok(value) => {
+                    if value {
+                        sources.push(src.clone());
+                    }
+                }
+                Err(e) => return Err(FilterError(src.path.clone(), e)),
+            }
+        }
         Ok(SourceList { sources })
     }
 }

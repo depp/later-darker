@@ -1,3 +1,4 @@
+use crate::project::config::Config;
 use crate::project::paths;
 use crate::project::sources;
 use clap::Parser;
@@ -11,13 +12,22 @@ pub struct Args {
     /// Path to the project directory.
     #[arg(long)]
     project_directory: Option<PathBuf>,
+
+    #[arg(long)]
+    config: Option<Config>,
 }
 
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
         let project_directory =
             paths::find_project_directory_or(self.project_directory.as_deref())?;
-        let source_files = sources::SourceList::scan(&project_directory)?;
+        let mut source_files = sources::SourceList::scan(&project_directory)?;
+        if let Some(config) = &self.config {
+            let n = source_files.sources.len();
+            source_files = source_files.filter(config)?;
+            let m = source_files.sources.len();
+            eprintln!("Config: {} / {} sources", m, n);
+        }
 
         let mut out = String::new();
         for src in source_files.sources.iter() {

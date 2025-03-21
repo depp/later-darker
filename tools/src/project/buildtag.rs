@@ -71,11 +71,11 @@ impl Expression {
     }
 
     /// Evaluate the expression.
-    pub fn evaluate<F>(&self, eval_atom: &F) -> Result<bool, EvalError>
+    pub fn evaluate<F>(&self, eval_atom: F) -> Result<bool, EvalError>
     where
         F: Fn(&str) -> Option<bool>,
     {
-        self.0.evaluate(eval_atom)
+        self.0.evaluate(&eval_atom)
     }
 }
 
