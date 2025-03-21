@@ -46,6 +46,11 @@ impl error::Error for EvalError {}
 pub struct Expression(Expr);
 
 impl Expression {
+    /// Create a build expression from a single tag.
+    pub fn tag(name: ArcStr) -> Self {
+        Expression(Expr::Atom(name))
+    }
+
     /// Parse a build expression.
     pub fn parse(text: &[u8]) -> Result<Self, ParseError> {
         let mut parser = Parser {
