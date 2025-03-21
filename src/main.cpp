@@ -166,6 +166,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 // Windows
 // ============================================================================
 
+// This is defined in duplicate, by GFLW and <windows.h>.
+#undef APIENTRY
+
 #include "os_windows.hpp"
 
 #include <cstring>
