@@ -21,3 +21,4 @@ Standard: Cpp11
 TabWidth: 4
 UseTab: AlignWithSpaces
 AlignEscapedNewlines: DontAlign
+CommentPragmas: "^build:"
