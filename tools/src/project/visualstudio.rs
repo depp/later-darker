@@ -1,3 +1,4 @@
+use super::paths::ProjectPath;
 use crate::emit;
 use crate::xmlgen::{Element, XML};
 use arcstr::{ArcStr, literal};
@@ -191,7 +192,7 @@ pub struct Configuration {
 const PLATFORMS: [&str; 2] = ["Win32", "x64"];
 
 /// A list of files.
-pub type FileList = Vec<ArcStr>;
+pub type FileList = Vec<ProjectPath>;
 
 /// Visual Studio project specification.
 #[derive(Debug)]
@@ -420,7 +421,7 @@ impl Project {
     }
 
     /// Get all file groups in the project.
-    fn file_groups(&self) -> [(&'static str, &[ArcStr]); 4] {
+    fn file_groups(&self) -> [(&'static str, &[ProjectPath]); 4] {
         [
             ("ClInclude", &self.cl_include),
             ("ClCompile", &self.cl_compile),
@@ -458,8 +459,8 @@ impl Project {
             let mut group = project.tag("ItemGroup").open();
             for file in files.iter() {
                 let filter = file
-                    .rfind('.')
-                    .and_then(|i| extension_map.get(&file[i + 1..]).copied());
+                    .extension()
+                    .and_then(|ext| extension_map.get(ext).copied());
                 let mut item = group.tag(tag).attr("Include", file).open();
                 if let Some(filter) = filter {
                     item.tag("Filter").text(filter);

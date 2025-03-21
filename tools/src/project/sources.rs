@@ -3,12 +3,11 @@ use super::config;
 use super::paths;
 use super::paths::{ProjectPath, ProjectRoot};
 use std::error;
-use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
 use std::io;
 use std::io::BufRead;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 
 const SOURCE_EXTENSION: &str = "cpp";

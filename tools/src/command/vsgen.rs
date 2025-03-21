@@ -40,7 +40,7 @@ impl Args {
                 sources::SourceType::Source => &mut project.cl_compile,
                 sources::SourceType::Header => &mut project.cl_include,
             };
-            list.push(file.path().to_windows().into());
+            list.push(file.path().clone());
         }
 
         project.emit(&mut outputs, project_directory.as_path(), "LaterDarker");

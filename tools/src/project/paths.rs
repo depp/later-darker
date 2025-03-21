@@ -241,6 +241,30 @@ impl ProjectPath {
     pub fn to_windows(&self) -> String {
         self.0.replace('/', "\\")
     }
+
+    /// Get the last component of this path, unless this is the root project
+    /// directory.
+    pub fn file_name(&self) -> Option<&str> {
+        if self.0 == "." {
+            None
+        } else {
+            Some(match self.0.rsplit_once('/') {
+                Some((_, file_name)) => file_name,
+                None => &self.0,
+            })
+        }
+    }
+
+    /// Get the extension for this file, if it exists.
+    pub fn extension(&self) -> Option<&str> {
+        let file_name = self.file_name()?;
+        let (base, extension) = file_name.rsplit_once('.')?;
+        if base.is_empty() {
+            None
+        } else {
+            Some(extension)
+        }
+    }
 }
 
 impl fmt::Display for ProjectPath {
