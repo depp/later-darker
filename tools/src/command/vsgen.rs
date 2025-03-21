@@ -48,6 +48,10 @@ impl Args {
             .properties
             .cl_compile
             .set("LanguageStandard", "stdcpp20");
+        project.properties.cl_compile.set(
+            "AdditionalIncludeDirectories",
+            "$(ProjectDir)src\\generated\\;%(AdditionalIncludeDirectories)",
+        );
         for file in source_files.sources.iter() {
             let list = match file.ty() {
                 sources::SourceType::Source => &mut project.cl_compile,
