@@ -398,7 +398,7 @@ impl Project {
         for (tag, files) in self.file_groups() {
             let mut group = project.tag("ItemGroup").open();
             for file in files.iter() {
-                group.tag(tag).attr("Include", file).close();
+                group.tag(tag).attr("Include", file.to_windows()).close();
             }
             group.close();
         }
