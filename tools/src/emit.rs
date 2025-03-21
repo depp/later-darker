@@ -63,7 +63,7 @@ impl<'a> StringWriter<'a> {
 
 /// Write a file to disk.
 pub fn write(path: &Path, contents: &[u8]) -> io::Result<()> {
-    eprintln!("Writing file: {:?}", path);
+    eprintln!("Writing file: {}", path.display());
     fs::write(path, contents)
 }
 
