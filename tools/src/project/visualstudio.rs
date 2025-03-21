@@ -443,17 +443,18 @@ impl Project {
             .open();
 
         let mut extension_map: HashMap<&str, &str> = HashMap::new();
+        let mut group = project.tag("ItemGroup").open();
         for filter in FILTERS.iter() {
             for ext in filter.extensions.split(';') {
                 extension_map.insert(ext, filter.name);
             }
-            let mut group = project.tag("Filter").attr("Include", filter.name).open();
-            group
-                .tag("UniqueIdentifier")
+            let mut item = group.tag("Filter").attr("Include", filter.name).open();
+            item.tag("UniqueIdentifier")
                 .text(filter.unique_identifier.braced().to_string());
-            group.tag("Extensions").text(filter.extensions);
-            group.close();
+            item.tag("Extensions").text(filter.extensions);
+            item.close();
         }
+        group.close();
         for (tag, files) in self.file_groups() {
             let mut group = project.tag("ItemGroup").open();
             for file in files.iter() {

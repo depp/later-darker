@@ -1,5 +1,6 @@
 pub mod glemit;
 pub mod glscan;
+pub mod listsources;
 pub mod shader;
 pub mod vsgen;
 
@@ -13,6 +14,7 @@ pub enum Command {
     GLScan(glscan::Args),
     GLEmit(glemit::Args),
     VSGen(vsgen::Args),
+    ListSources(listsources::Args),
 }
 
 impl Command {
@@ -23,6 +25,7 @@ impl Command {
             GLScan(c) => c.run(),
             GLEmit(c) => c.run(),
             VSGen(c) => c.run(),
+            ListSources(c) => c.run(),
         }
     }
 }
