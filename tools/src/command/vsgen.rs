@@ -64,7 +64,7 @@ impl Args {
             list.push(file.path().clone());
         }
 
-        project.emit(&mut outputs, root.as_path(), "LaterDarker");
+        project.emit(&mut outputs, root.as_path(), "LaterDarkerFull");
 
         // Generate source fiels.
         outputs.add_directory(root.resolve(&ProjectPath::GENERATED));
