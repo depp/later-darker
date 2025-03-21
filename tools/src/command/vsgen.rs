@@ -1,3 +1,4 @@
+use crate::emit;
 use crate::project::config::Config;
 use crate::project::config::Platform;
 use crate::project::config::Variant;
@@ -22,6 +23,7 @@ impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
         let project_directory = ProjectRoot::find_or(self.project_directory.as_deref())?;
         let source_files = sources::SourceList::scan(&project_directory)?;
+        let mut outputs = emit::Outputs::new();
 
         let source_files = source_files.filter(&Config {
             platform: Platform::Windows,
@@ -41,7 +43,8 @@ impl Args {
             list.push(file.path().to_windows().into());
         }
 
-        project.emit(project_directory.as_path(), "LaterDarker")?;
+        project.emit(&mut outputs, project_directory.as_path(), "LaterDarker");
+        outputs.write()?;
         Ok(())
     }
 }

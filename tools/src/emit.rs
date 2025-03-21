@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::fs;
 use std::io;
 use std::io::Write as _;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const COLUMNS: usize = 79;
 
@@ -71,5 +71,29 @@ pub fn write_or_stdout(path: Option<&Path>, contents: &[u8]) -> io::Result<()> {
     match path {
         None => io::stdout().lock().write_all(contents),
         Some(path) => write(path, contents),
+    }
+}
+
+/// A collection of outputs to emit.
+pub struct Outputs {
+    files: Vec<(PathBuf, Vec<u8>)>,
+}
+
+impl Outputs {
+    pub fn new() -> Self {
+        Outputs { files: Vec::new() }
+    }
+
+    /// Add a file to the outputs.
+    pub fn add_file(&mut self, path: impl Into<PathBuf>, data: impl Into<Vec<u8>>) {
+        self.files.push((path.into(), data.into()));
+    }
+
+    /// Write outputs to the filesystem.
+    pub fn write(self) -> io::Result<()> {
+        for (path, data) in self.files {
+            write(&path, &data)?;
+        }
+        Ok(())
     }
 }
