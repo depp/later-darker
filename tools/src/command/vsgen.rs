@@ -56,6 +56,10 @@ impl Args {
             "AdditionalIncludeDirectories",
             "$(ProjectDir)src\\generated\\;%(AdditionalIncludeDirectories)",
         );
+        project.properties.link.set(
+            "AdditionalDependencies",
+            "opengl32.lib;%(AdditionalDependencies)",
+        );
         project.enable_vcpkg = true;
         for file in source_files.sources.iter() {
             let list = match file.ty() {
