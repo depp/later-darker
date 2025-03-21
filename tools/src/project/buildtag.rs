@@ -85,6 +85,7 @@ impl ToString for Expression {
 /// A build tag expression.
 #[derive(Debug, PartialEq, Eq)]
 enum Expr {
+    Value(bool),
     Atom(ArcStr),
     Not(Box<Expr>),
     And(Box<Expr>, Box<Expr>),
@@ -112,6 +113,7 @@ impl Expr {
     /// is 0, and higher contexts bind more tightly.
     fn write(&self, out: &mut String, prec: i32) {
         match self {
+            Expr::Value(value) => out.push_str(if *value { "true" } else { "false" }),
             Expr::Atom(atom) => out.push_str(atom),
             Expr::Not(expr) => {
                 out.push('!');
@@ -127,6 +129,7 @@ impl Expr {
         F: Fn(&str) -> Option<bool>,
     {
         Ok(match self {
+            Expr::Value(value) => *value,
             Expr::Atom(atom) => match eval_atom(atom) {
                 None => return Err(EvalError(atom.clone())),
                 Some(value) => value,
@@ -247,7 +250,11 @@ impl<'a> Parser<'a> {
     fn parse_atom(&mut self) -> Result<Expr, ParseError> {
         match self.tok {
             Tok::Atom => {
-                let expr = Expr::Atom(ArcStr::from(self.value));
+                let expr = match self.value {
+                    "false" => Expr::Value(false),
+                    "true" => Expr::Value(true),
+                    _ => Expr::Atom(ArcStr::from(self.value)),
+                };
                 self.next_token();
                 Ok(expr)
             }
@@ -299,8 +306,10 @@ mod test {
 
     #[test]
     fn test_parse_atom() {
-        check_parse("true", var("true"));
-        check_parse("  false  ", var("false"));
+        check_parse("value", var("value"));
+        check_parse("  atom  ", var("atom"));
+        check_parse("true", Expr::Value(true));
+        check_parse("false", Expr::Value(false));
     }
 
     #[test]
