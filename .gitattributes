@@ -1,1 +1,4 @@
 *.md    text
+*.vcxproj   eol=crlf
+*.vcxproj.filters   eol=crlf
+*.sln   eol=crlf

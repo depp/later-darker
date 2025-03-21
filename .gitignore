@@ -1,6 +1,10 @@
 # Visual Studio configuration files.
 /.vs/
 
+# Generated.
+/*.vcxproj
+/*.vcxproj.filters
+
 # Build directory.
 /out/
 
