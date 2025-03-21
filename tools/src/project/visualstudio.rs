@@ -1,6 +1,9 @@
+use crate::emit;
 use crate::xmlgen::{Element, XML};
 use arcstr::{ArcStr, literal};
 use std::collections::HashMap;
+use std::io;
+use std::path::Path;
 use uuid::{Uuid, uuid};
 
 /// A set of Visual Studio project properties.
@@ -267,7 +270,7 @@ impl Project {
     }
 
     /// Generate the XML vcxproj file.
-    pub fn vcxproj(&self) -> String {
+    fn vcxproj(&self) -> String {
         let platform_configs = self.platform_configs();
 
         let mut doc = XML::new();
@@ -428,7 +431,7 @@ impl Project {
     }
 
     /// Generate the contents of the .vcxproj.filters file.
-    pub fn filters(&self) -> String {
+    fn filters(&self) -> String {
         let mut doc = XML::new();
         let mut project = doc
             .root("Project")
@@ -467,6 +470,17 @@ impl Project {
         }
         project.close();
         doc.finish()
+    }
+
+    /// Emit project files to a directory.
+    pub fn emit(&self, directory: &Path, name: &str) -> io::Result<()> {
+        let vcxproj = self.vcxproj();
+        let filters = self.filters();
+        let vcxproj_path = directory.join(format!("{}.vcxproj", name));
+        let filters_path = directory.join(format!("{}.vcxproj.filters", name));
+        emit::write(&vcxproj_path, vcxproj.as_bytes())?;
+        emit::write(&filters_path, filters.as_bytes())?;
+        Ok(())
     }
 }
 
