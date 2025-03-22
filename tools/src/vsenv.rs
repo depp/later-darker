@@ -195,7 +195,6 @@ impl VarCommand {
             Ok(output) => output,
             Err(e) => return Err(Error::ProgRun(CMD, e)),
         };
-        eprintln!("Output: {}", String::from_utf8_lossy(&output.stdout));
         let stdout = match String::from_utf8(output.stdout) {
             Ok(s) => s,
             Err(_) => return Err(Error::ProgOutput(CMD)),
