@@ -9,6 +9,7 @@ mod identifier;
 mod intern;
 mod project;
 mod shader;
+mod vsenv;
 mod xmlgen;
 
 fn main() {
