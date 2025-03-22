@@ -7,8 +7,9 @@ pub struct Args;
 
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn error::Error>> {
-        let path = vsenv::find_vs()?;
-        eprintln!("Found Visual Studio: {}", path);
+        let vs_path = vsenv::find_vs()?;
+        eprintln!("Found Visual Studio: {}", vs_path);
+        vsenv::environment(&vs_path)?;
         Ok(())
     }
 }
