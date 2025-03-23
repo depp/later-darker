@@ -80,8 +80,12 @@ impl ProjectRoot {
 
     /// Resolve a project path.
     pub fn resolve(&self, path: &ProjectPath) -> PathBuf {
+        self.resolve_str(path.0.as_str())
+    }
+
+    /// Resolve a project path as a raw string. The string is not validated.
+    pub fn resolve_str(&self, path: &str) -> PathBuf {
         let mut buf = self.0.clone().into_os_string();
-        let path = path.0.as_str();
         if path != "." {
             if MAIN_SEPARATOR == '/' {
                 if !buf.as_encoded_bytes().ends_with(b"/") {

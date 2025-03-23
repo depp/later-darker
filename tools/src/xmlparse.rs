@@ -1,12 +1,16 @@
 use arcstr::ArcStr;
-use roxmltree::NodeType;
-use roxmltree::{Node, TextPos};
+use roxmltree::{Attribute, Node, NodeType, TextPos};
 use std::error;
 use std::fmt;
 
 /// Get the text position for a node.
 pub fn node_pos(node: Node) -> TextPos {
     node.document().text_pos_at(node.range().start)
+}
+
+/// Get the text position for an attribute.
+pub fn attr_pos(node: Node, attr: Attribute) -> TextPos {
+    node.document().text_pos_at(attr.range().start)
 }
 
 #[derive(Debug, Clone)]
@@ -31,6 +35,7 @@ pub enum Error<T> {
     UnexpectedRoot(TagPos),
     UnexpectedTag(TagPos, ArcStr),
     MissingAttribute(TagPos, ArcStr),
+    UnexpectedAttribute(TagPos, ArcStr),
     Other(T),
 }
 
@@ -61,6 +66,11 @@ where
                 "missing required attribute '{}' in <{}> at {}",
                 attribute, tag.tag, tag.pos
             ),
+            Error::UnexpectedAttribute(tag, attribute) => write!(
+                f,
+                "unexpected attribute '{}' in <{}> at {}",
+                attribute, tag.tag, tag.pos
+            ),
             Error::Other(e) => e.fmt(f),
         }
     }
@@ -76,6 +86,17 @@ pub fn unexpected_tag<T>(node: Node, parent: Node) -> Error<T> {
 /// Create an error for an unexpected root tag.
 pub fn unexpected_root<T>(node: Node) -> Error<T> {
     Error::UnexpectedRoot(node.into())
+}
+
+/// Create an error for an unexpected or unknown attribute.
+pub fn unexpected_attribute<T>(node: Node, attr: Attribute) -> Error<T> {
+    Error::UnexpectedAttribute(
+        TagPos {
+            tag: ArcStr::from(node.tag_name().name()),
+            pos: attr_pos(node, attr),
+        },
+        attr.name().into(),
+    )
 }
 
 /// Get a required attribute from a node, or return an error if the attribute is

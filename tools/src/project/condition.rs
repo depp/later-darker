@@ -2,12 +2,13 @@ use arcstr::ArcStr;
 use core::fmt;
 use std::error;
 use std::str;
+use std::sync::Arc;
 
 // ============================================================================
 // Errors
 // ============================================================================
 
-/// Error when parsing a build expression.
+/// Error when parsing a build condition.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
     InvalidToken,
@@ -25,7 +26,7 @@ impl fmt::Display for ParseError {
 
 impl error::Error for ParseError {}
 
-/// Error when evaluating a build expression.
+/// Error when evaluating a build condition.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvalError(pub ArcStr);
 
@@ -38,67 +39,36 @@ impl fmt::Display for EvalError {
 impl error::Error for EvalError {}
 
 // ============================================================================
-// Expression
+// Condition
 // ============================================================================
 
-/// A build tag expression.
-#[derive(Debug)]
-pub struct Expression(Expr);
-
-impl Expression {
-    /// Create a build expression from a single tag.
-    pub fn tag(name: ArcStr) -> Self {
-        Expression(Expr::Atom(name))
-    }
-
-    /// Parse a build expression.
-    pub fn parse(text: &[u8]) -> Result<Self, ParseError> {
-        let mut parser = Parser {
-            text,
-            tok: Tok::End,
-            value: "",
-        };
-        parser.next_token();
-        let value = parser.parse_or();
-        if parser.tok == Tok::Error {
-            return Err(ParseError::InvalidToken);
-        }
-        let expr = value?;
-        if parser.tok != Tok::End {
-            return Err(ParseError::InvalidSyntax);
-        }
-        Ok(Expression(expr))
-    }
-
-    /// Evaluate the expression.
-    pub fn evaluate<F>(&self, eval_atom: F) -> Result<bool, EvalError>
-    where
-        F: Fn(&str) -> Option<bool>,
-    {
-        self.0.evaluate(&eval_atom)
-    }
+/// A build condition.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Condition {
+    Value(bool),
+    Atom(ArcStr),
+    Not(Arc<Condition>),
+    And(Arc<Condition>, Arc<Condition>),
+    Or(Arc<Condition>, Arc<Condition>),
 }
 
-impl ToString for Expression {
+impl ToString for Condition {
     fn to_string(&self) -> String {
         let mut out = String::new();
-        self.0.write(&mut out, 0);
+        self.write(&mut out, 0);
         out
     }
 }
 
-/// A build tag expression.
-#[derive(Debug, PartialEq, Eq)]
-enum Expr {
-    Value(bool),
-    Atom(ArcStr),
-    Not(Box<Expr>),
-    And(Box<Expr>, Box<Expr>),
-    Or(Box<Expr>, Box<Expr>),
-}
-
-/// Helper for writing binary expressions.
-fn write_binary(lhs: &Expr, rhs: &Expr, out: &mut String, prec: i32, op_prec: i32, symbol: &str) {
+/// Helper for writing binary conditions.
+fn write_binary(
+    lhs: &Condition,
+    rhs: &Condition,
+    out: &mut String,
+    prec: i32,
+    op_prec: i32,
+    symbol: &str,
+) {
     let group = prec > op_prec;
     if group {
         out.push('(');
@@ -113,41 +83,68 @@ fn write_binary(lhs: &Expr, rhs: &Expr, out: &mut String, prec: i32, op_prec: i3
     }
 }
 
-impl Expr {
-    /// Write an expression in the given precedence context. The initial context
+impl Condition {
+    /// Parse a build condition.
+    pub fn parse(text: &[u8]) -> Result<Self, ParseError> {
+        let mut parser = Parser {
+            text,
+            tok: Tok::End,
+            value: "",
+        };
+        parser.next_token();
+        let value = parser.parse_or();
+        if parser.tok == Tok::Error {
+            return Err(ParseError::InvalidToken);
+        }
+        let condition = value?;
+        if parser.tok != Tok::End {
+            return Err(ParseError::InvalidSyntax);
+        }
+        Ok(condition)
+    }
+
+    /// Evaluate the condition.
+    pub fn evaluate<F>(&self, eval_atom: F) -> Result<bool, EvalError>
+    where
+        F: Fn(&str) -> Option<bool>,
+    {
+        self.evaluate_impl(&eval_atom)
+    }
+
+    /// Write an condition in the given precedence context. The initial context
     /// is 0, and higher contexts bind more tightly.
     fn write(&self, out: &mut String, prec: i32) {
         match self {
-            Expr::Value(value) => out.push_str(if *value { "true" } else { "false" }),
-            Expr::Atom(atom) => out.push_str(atom),
-            Expr::Not(expr) => {
+            Condition::Value(value) => out.push_str(if *value { "true" } else { "false" }),
+            Condition::Atom(atom) => out.push_str(atom),
+            Condition::Not(expr) => {
                 out.push('!');
                 expr.write(out, 2);
             }
-            Expr::And(lhs, rhs) => write_binary(lhs, rhs, out, prec, 1, "&&"),
-            Expr::Or(lhs, rhs) => write_binary(lhs, rhs, out, prec, 0, "||"),
+            Condition::And(lhs, rhs) => write_binary(lhs, rhs, out, prec, 1, "&&"),
+            Condition::Or(lhs, rhs) => write_binary(lhs, rhs, out, prec, 0, "||"),
         }
     }
 
-    pub fn evaluate<F>(&self, eval_atom: &F) -> Result<bool, EvalError>
+    fn evaluate_impl<F>(&self, eval_atom: &F) -> Result<bool, EvalError>
     where
         F: Fn(&str) -> Option<bool>,
     {
         Ok(match self {
-            Expr::Value(value) => *value,
-            Expr::Atom(atom) => match eval_atom(atom) {
+            Condition::Value(value) => *value,
+            Condition::Atom(atom) => match eval_atom(atom) {
                 None => return Err(EvalError(atom.clone())),
                 Some(value) => value,
             },
-            Expr::Not(expr) => !expr.evaluate(eval_atom)?,
-            Expr::And(lhs, rhs) => {
-                let lhs = lhs.evaluate(eval_atom)?;
-                let rhs = rhs.evaluate(eval_atom)?;
+            Condition::Not(expr) => !expr.evaluate_impl(eval_atom)?,
+            Condition::And(lhs, rhs) => {
+                let lhs = lhs.evaluate_impl(eval_atom)?;
+                let rhs = rhs.evaluate_impl(eval_atom)?;
                 lhs && rhs
             }
-            Expr::Or(lhs, rhs) => {
-                let lhs = lhs.evaluate(eval_atom)?;
-                let rhs = rhs.evaluate(eval_atom)?;
+            Condition::Or(lhs, rhs) => {
+                let lhs = lhs.evaluate_impl(eval_atom)?;
+                let rhs = rhs.evaluate_impl(eval_atom)?;
                 lhs || rhs
             }
         })
@@ -218,27 +215,27 @@ impl<'a> Parser<'a> {
         self.tok = tok;
     }
 
-    fn parse_or(&mut self) -> Result<Expr, ParseError> {
+    fn parse_or(&mut self) -> Result<Condition, ParseError> {
         let mut expr = self.parse_and()?;
         while self.tok == Tok::Or {
             self.next_token();
             let rhs = self.parse_and()?;
-            expr = Expr::Or(Box::new(expr), Box::new(rhs));
+            expr = Condition::Or(Arc::new(expr), Arc::new(rhs));
         }
         Ok(expr)
     }
 
-    fn parse_and(&mut self) -> Result<Expr, ParseError> {
+    fn parse_and(&mut self) -> Result<Condition, ParseError> {
         let mut expr = self.parse_not()?;
         while self.tok == Tok::And {
             self.next_token();
             let rhs = self.parse_not()?;
-            expr = Expr::And(Box::new(expr), Box::new(rhs));
+            expr = Condition::And(Arc::new(expr), Arc::new(rhs));
         }
         Ok(expr)
     }
 
-    fn parse_not(&mut self) -> Result<Expr, ParseError> {
+    fn parse_not(&mut self) -> Result<Condition, ParseError> {
         let mut flip = false;
         while self.tok == Tok::Not {
             self.next_token();
@@ -246,19 +243,19 @@ impl<'a> Parser<'a> {
         }
         let expr = self.parse_atom()?;
         Ok(if flip {
-            Expr::Not(Box::new(expr))
+            Condition::Not(Arc::new(expr))
         } else {
             expr
         })
     }
 
-    fn parse_atom(&mut self) -> Result<Expr, ParseError> {
+    fn parse_atom(&mut self) -> Result<Condition, ParseError> {
         match self.tok {
             Tok::Atom => {
                 let expr = match self.value {
-                    "false" => Expr::Value(false),
-                    "true" => Expr::Value(true),
-                    _ => Expr::Atom(ArcStr::from(self.value)),
+                    "false" => Condition::Value(false),
+                    "true" => Condition::Value(true),
+                    _ => Condition::Atom(ArcStr::from(self.value)),
                 };
                 self.next_token();
                 Ok(expr)
@@ -279,42 +276,42 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod test {
+    use super::{Condition, ParseError};
     use arcstr::ArcStr;
+    use std::sync::Arc;
 
-    use super::{Expr, Expression, ParseError};
-
-    fn check_parse(text: &str, expected: Expr) {
-        let result = Expression::parse(text.as_bytes()).expect("Parsing should succeed.");
-        assert_eq!(result.0, expected);
+    fn check_parse(text: &str, expected: Condition) {
+        let result = Condition::parse(text.as_bytes()).expect("Parsing should succeed.");
+        assert_eq!(&result, &expected);
     }
 
     fn check_err(text: &str, err: ParseError) {
-        let result = Expression::parse(text.as_bytes()).expect_err("Parsing should fail.");
+        let result = Condition::parse(text.as_bytes()).expect_err("Parsing should fail.");
         assert_eq!(result, err);
     }
 
-    fn var(x: &'static str) -> Expr {
-        Expr::Atom(ArcStr::from(x))
+    fn var(x: &'static str) -> Condition {
+        Condition::Atom(ArcStr::from(x))
     }
 
-    fn enot(x: Expr) -> Expr {
-        Expr::Not(Box::new(x))
+    fn enot(x: Condition) -> Condition {
+        Condition::Not(Arc::new(x))
     }
 
-    fn eor(x: Expr, y: Expr) -> Expr {
-        Expr::Or(Box::new(x), Box::new(y))
+    fn eor(x: Condition, y: Condition) -> Condition {
+        Condition::Or(Arc::new(x), Arc::new(y))
     }
 
-    fn eand(x: Expr, y: Expr) -> Expr {
-        Expr::And(Box::new(x), Box::new(y))
+    fn eand(x: Condition, y: Condition) -> Condition {
+        Condition::And(Arc::new(x), Arc::new(y))
     }
 
     #[test]
     fn test_parse_atom() {
         check_parse("value", var("value"));
         check_parse("  atom  ", var("atom"));
-        check_parse("true", Expr::Value(true));
-        check_parse("false", Expr::Value(false));
+        check_parse("true", Condition::Value(true));
+        check_parse("false", Condition::Value(false));
     }
 
     #[test]

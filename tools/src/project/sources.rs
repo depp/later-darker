@@ -1,18 +1,25 @@
-use super::buildtag;
+use super::condition::{self, Condition, EvalError};
 use super::config;
-use super::paths;
-use super::paths::{ProjectPath, ProjectRoot};
+use super::paths::ProjectPath;
+use super::paths::{self, ProjectRoot};
+use crate::xmlparse::{self, attr_pos, unexpected_attribute, unexpected_root, unexpected_tag};
+use arcstr::ArcStr;
+use roxmltree::{Node, NodeType, TextPos};
 use std::error;
 use std::fmt;
 use std::fs;
 use std::io;
-use std::io::BufRead;
 use std::path::Path;
 use std::sync::Arc;
+
+// ============================================================================
+// Source Types
+// ============================================================================
 
 const SOURCE_EXTENSION: &str = "cpp";
 const HEADER_EXTENSION: &str = "hpp";
 
+/// A type of source file.
 #[derive(Debug, Clone, Copy)]
 pub enum SourceType {
     Source,
@@ -34,22 +41,17 @@ impl SourceType {
             _ => return None,
         })
     }
-
-    fn for_filename(name: &str) -> Option<Self> {
-        let (_, extension) = name.rsplit_once('.')?;
-        Self::for_extension(extension)
-    }
 }
+
+// ============================================================================
+// Source Files
+// ============================================================================
 
 /// Information about an individual source file in the project.
 #[derive(Debug, Clone)]
 pub struct Source {
     ty: SourceType,
-
     path: ProjectPath,
-
-    /// Build tag, if present.
-    build_tag: Option<Arc<buildtag::Expression>>,
 }
 
 impl Source {
@@ -57,11 +59,7 @@ impl Source {
     pub fn new_generated(name: &str, ty: SourceType) -> Result<Arc<Self>, paths::PathError> {
         let full_name = [name, ty.extension()].join(".");
         let path = paths::ProjectPath::GENERATED.append(&full_name)?;
-        Ok(Arc::new(Source {
-            ty,
-            path,
-            build_tag: None,
-        }))
+        Ok(Arc::new(Source { ty, path }))
     }
 
     /// Get the source type.
@@ -73,189 +71,198 @@ impl Source {
     pub fn path(&self) -> &ProjectPath {
         &self.path
     }
-
-    /// Test whether this source is included in the given config.
-    pub fn is_in_config(&self, config: &config::Config) -> Result<bool, buildtag::EvalError> {
-        match &self.build_tag {
-            None => Ok(true),
-            Some(expr) => expr.evaluate(|tag| config.eval_tag(tag)),
-        }
-    }
-
-    /// Get the build tag for this source file.
-    pub fn build_tag(&self) -> Option<&buildtag::Expression> {
-        self.build_tag.as_deref()
-    }
 }
 
+// ============================================================================
+// Error
+// ============================================================================
+
+/// Error reading a project spec.
 #[derive(Debug)]
-pub enum ScanError {
-    IO(ProjectPath, io::Error),
-    BuildTag(ProjectPath, BuildTagError),
+pub enum InnerReadError {
+    IO(io::Error),
+    BuildTag(condition::ParseError, TextPos),
+    BadPath(ArcStr, paths::PathError),
+    UnknownExtension(ArcStr),
 }
 
-impl fmt::Display for ScanError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl InnerReadError {
+    fn err(self) -> ReadError {
+        ReadError::Other(self)
+    }
+}
+
+impl fmt::Display for InnerReadError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ScanError::IO(p, e) => write!(f, "{}: list files: {}", p, e),
-            ScanError::BuildTag(p, e) => write!(f, "{}: get build tag: {}", p, e),
+            InnerReadError::IO(e) => write!(f, "failed to read: {}", e),
+            InnerReadError::BuildTag(err, pos) => {
+                write!(f, "invalid condition at {}: {}", pos, err)
+            }
+            InnerReadError::BadPath(path, err) => write!(f, "invalid path {:?}: {}", path, err),
+            InnerReadError::UnknownExtension(path) => {
+                write!(f, "file {:?} has unknown extension", path)
+            }
         }
     }
 }
 
-impl error::Error for ScanError {}
+impl error::Error for InnerReadError {}
 
-#[derive(Debug, Clone)]
-pub struct FilterError(ProjectPath, pub buildtag::EvalError);
+/// Error from reading a source list.
+pub type ReadError = xmlparse::Error<InnerReadError>;
 
-impl fmt::Display for FilterError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.0, self.1)
-    }
-}
-
-impl error::Error for FilterError {}
+// ============================================================================
+// Source List
+// ============================================================================
 
 /// A list of source files.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SourceList {
-    pub sources: Vec<Arc<Source>>,
+    group: Group,
 }
 
-/// Get the build tag associated with a file.
-fn build_tag_from_filename(name: &str) -> Option<&str> {
-    let (stem, _) = name.rsplit_once('.')?;
-    let (_, tag) = stem.rsplit_once('_')?;
-    if config::is_tag(tag) { Some(tag) } else { None }
+/// Sort a list of sources lexicographically.
+fn sort_sources(sources: &mut [Arc<Source>]) {
+    sources.sort_by(|x, y| x.path.as_str().cmp(y.path.as_str()));
 }
 
 impl SourceList {
-    /// Scan the project root directory for source files.
-    pub fn scan(project_root: &ProjectRoot) -> Result<Self, ScanError> {
-        let directory = &ProjectPath::SRC;
-        let mut sources: Vec<Arc<Source>> = Vec::new();
-        let items = match fs::read_dir(&project_root.resolve(directory)) {
-            Ok(items) => items,
-            Err(e) => return Err(ScanError::IO(ProjectPath::SRC.clone(), e)),
-        };
-        for item in items {
-            let item = match item {
-                Ok(item) => item,
-                Err(e) => return Err(ScanError::IO(ProjectPath::SRC.clone(), e)),
-            };
-            let name = match item.file_name().into_string() {
-                Ok(name) => name,
-                Err(name) => {
-                    eprintln!("Warning: bad filename encoding: {:?}", name);
-                    continue;
-                }
-            };
-            if name.starts_with('.') || name.starts_with('_') {
-                continue;
-            }
-            let Some(ty) = SourceType::for_filename(&name) else {
-                continue;
-            };
-            let path = match directory.append(&name) {
-                Ok(path) => path,
-                Err(e) => {
-                    eprintln!("Warning: bad filename {:?}: {}", name, e);
-                    continue;
-                }
-            };
-            let build_tag = match read_build_tag(&project_root.resolve(&path)) {
-                Ok(e) => e,
-                Err(e) => return Err(ScanError::BuildTag(path, e)),
-            };
-            let build_tag = match build_tag {
-                None => match build_tag_from_filename(&name) {
-                    None => None,
-                    Some(tag) => Some(buildtag::Expression::tag(tag.into())),
-                },
-                Some(value) => Some(value),
-            };
-            sources.push(Arc::new(Source {
-                ty,
-                path,
-                build_tag: build_tag.map(Arc::new),
-            }));
-        }
-        Ok(SourceList { sources })
+    /// Read the main project source list.
+    pub fn read_project(root: &ProjectRoot) -> Result<Self, ReadError> {
+        let path = root.resolve_str("support/sources.xml");
+        SourceList::read(&path)
     }
 
-    /// Filter sources that apply to a build configuration.
-    pub fn filter(&self, config: &config::Config) -> Result<Self, FilterError> {
-        let mut sources = Vec::with_capacity(self.sources.len());
-        for src in self.sources.iter() {
-            match src.is_in_config(config) {
-                Ok(value) => {
-                    if value {
-                        sources.push(src.clone());
+    /// Read a source list from a file.
+    pub fn read(path: &Path) -> Result<Self, ReadError> {
+        let text =
+            fs::read_to_string(path).map_err(|err| ReadError::Other(InnerReadError::IO(err)))?;
+        let doc = roxmltree::Document::parse(&text)?;
+        let root = doc.root_element();
+        if root.tag_name().name() != "sources" {
+            return Err(unexpected_root(root).into());
+        }
+        Ok(SourceList {
+            group: Group::parse(root)?,
+        })
+    }
+
+    /// Return the sources that are included in a specific build configuration.
+    pub fn sources_for_config(
+        &self,
+        config: &config::Config,
+    ) -> Result<Vec<Arc<Source>>, EvalError> {
+        let mut sources = Vec::new();
+        self.group.append_sources_config(&mut sources, config)?;
+        sort_sources(&mut sources);
+        Ok(sources)
+    }
+
+    /// Return all sources.
+    pub fn all_sources(&self) -> Vec<Arc<Source>> {
+        let mut sources = Vec::new();
+        self.group.append_sources(&mut sources);
+        sort_sources(&mut sources);
+        sources
+    }
+
+    /// Count the number of sources in the list.
+    pub fn count(&self) -> usize {
+        self.group.count()
+    }
+}
+
+/// A group of sources in the source list, which can contain subgroups.
+#[derive(Debug)]
+struct Group {
+    condition: Option<Condition>,
+    sources: Vec<Arc<Source>>,
+    subgroups: Vec<Group>,
+}
+
+impl Group {
+    /// Parse a group in an XML document.
+    fn parse(node: Node) -> Result<Self, ReadError> {
+        let mut result = Group {
+            condition: None,
+            sources: Vec::new(),
+            subgroups: Vec::new(),
+        };
+        for attr in node.attributes() {
+            match attr.name() {
+                "condition" => match Condition::parse(attr.value().as_bytes()) {
+                    Ok(condition) => result.condition = Some(condition),
+                    Err(err) => {
+                        return Err(InnerReadError::BuildTag(err, attr_pos(node, attr)).err());
+                    }
+                },
+                _ => return Err(unexpected_attribute(node, attr)),
+            }
+        }
+        // Combine all text and parse it once combined, in case adjacent text
+        // nodes are not combined.
+        let mut text = String::new();
+        for child in node.children() {
+            match child.node_type() {
+                NodeType::Element => {
+                    text.push(' ');
+                    match child.tag_name().name() {
+                        "group" => result.subgroups.push(Group::parse(child)?),
+                        _ => return Err(unexpected_tag(child, node)),
                     }
                 }
-                Err(e) => return Err(FilterError(src.path.clone(), e)),
+                NodeType::Text => {
+                    if let Some(node_text) = child.text() {
+                        text.push_str(node_text);
+                    }
+                }
+                _ => (),
             }
         }
-        Ok(SourceList { sources })
+        for item in text.split_ascii_whitespace() {
+            let path = match ProjectPath::SRC.append(item) {
+                Ok(path) => path,
+                Err(err) => return Err(InnerReadError::BadPath(item.into(), err).err()),
+            };
+            let Some(ty) = path.extension().and_then(SourceType::for_extension) else {
+                return Err(InnerReadError::UnknownExtension(item.into()).err());
+            };
+            result.sources.push(Arc::new(Source { path, ty }));
+        }
+        Ok(result)
     }
 
-    /// Sort the sources by path.
-    pub fn sort(&mut self) {
-        self.sources
-            .sort_by(|x, y| x.path.as_str().cmp(y.path.as_str()));
-    }
-}
-
-/// Error from reading a build tag.
-#[derive(Debug)]
-pub enum BuildTagError {
-    IO(io::Error),
-    Parse(u32, buildtag::ParseError),
-}
-
-impl From<io::Error> for BuildTagError {
-    fn from(value: io::Error) -> Self {
-        BuildTagError::IO(value)
-    }
-}
-
-impl fmt::Display for BuildTagError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            BuildTagError::IO(e) => write!(f, "read: {}", e),
-            BuildTagError::Parse(lineno, e) => write!(f, "line {}: {}", lineno, e),
+    fn append_sources(&self, out: &mut Vec<Arc<Source>>) {
+        out.extend_from_slice(&self.sources);
+        for group in self.subgroups.iter() {
+            group.append_sources(out);
         }
     }
-}
 
-impl error::Error for BuildTagError {}
-
-/// Read the build tag for a single file.
-fn read_build_tag(path: &Path) -> Result<Option<buildtag::Expression>, BuildTagError> {
-    let file = fs::File::open(path)?;
-    let mut reader = io::BufReader::new(file);
-    let mut line = Vec::new();
-    let mut lineno: u32 = 0;
-    loop {
-        line.clear();
-        let n = reader.read_until(b'\n', &mut line)?;
-        if n == 0 {
-            break;
-        }
-        lineno += 1;
-        let line = line.trim_ascii_start();
-        if line.starts_with(b"//") {
-            const PREFIX: &[u8] = b"//build:";
-            if line.starts_with(PREFIX) {
-                let line = line[PREFIX.len()..].trim_ascii();
-                return match buildtag::Expression::parse(line) {
-                    Ok(e) => Ok(Some(e)),
-                    Err(e) => Err(BuildTagError::Parse(lineno, e)),
-                };
+    fn append_sources_config(
+        &self,
+        out: &mut Vec<Arc<Source>>,
+        config: &config::Config,
+    ) -> Result<(), EvalError> {
+        if let Some(condition) = &self.condition {
+            if !condition.evaluate(|tag| config.eval_tag(tag))? {
+                return Ok(());
             }
-        } else if !line.is_empty() {
-            break;
         }
+        out.extend_from_slice(&self.sources);
+        for group in self.subgroups.iter() {
+            group.append_sources_config(out, config)?;
+        }
+        Ok(())
     }
-    Ok(None)
+
+    fn count(&self) -> usize {
+        self.sources.len()
+            + self
+                .subgroups
+                .iter()
+                .map(|group| group.count())
+                .sum::<usize>()
+    }
 }

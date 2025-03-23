@@ -24,22 +24,21 @@ const GL_API_FULL: &str = "gl_api_full";
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
         let root = ProjectRoot::find_or(self.project_directory.as_deref())?;
-        let source_files = SourceList::scan(&root)?;
+        let source_list = SourceList::read_project(&root)?;
         let mut outputs = emit::Outputs::new();
 
-        let mut source_files = source_files.filter(&Config {
+        let mut source_files = source_list.sources_for_config(&Config {
             platform: Platform::Windows,
             variant: Variant::Full,
         })?;
         let gl_header = Source::new_generated(GL_API_FULL, SourceType::Header)?;
         let gl_source = Source::new_generated(GL_API_FULL, SourceType::Source)?;
         let shader_data = Source::new_generated("gl_shader_text_full", SourceType::Source)?;
-        source_files.sources.extend_from_slice(&[
+        source_files.extend_from_slice(&[
             gl_header.clone(),
             gl_source.clone(),
             shader_data.clone(),
         ]);
-        source_files.sort();
         let mut project = Project::new(uuid!("26443e89-4e15-4714-8cec-8ce4b3902761"));
         project
             .property_sheets
@@ -50,7 +49,7 @@ impl Args {
             "opengl32.lib;%(AdditionalDependencies)",
         );
         project.enable_vcpkg = true;
-        for file in source_files.sources.iter() {
+        for file in source_files.iter() {
             let list = match file.ty() {
                 SourceType::Source => &mut project.cl_compile,
                 SourceType::Header => &mut project.cl_include,

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sources>
+  gl_shader_data.cpp
+  gl_shader_data.hpp
+  gl_shader.hpp
+  gl.hpp
+  log.hpp
+  main.hpp
+  scene_cube.cpp
+  scene_cube.hpp
+  scene_triangle.cpp
+  scene_triangle.hpp
+  var_def.hpp
+  var.hpp
+  <group condition="compo">
+    gl_shader_compo.cpp
+    main_windows_compo.cpp
+  </group>
+  <group condition="!compo">
+    gl_debug.cpp
+    gl_debug.hpp
+    gl_shader_full.cpp
+    log_internal.hpp
+    log_standard.cpp
+    log_standard.hpp
+    main.cpp
+    os_file.hpp
+    os_string.cpp
+    os_string.hpp
+    text_buffer.cpp
+    text_buffer.hpp
+    text_unicode.cpp
+    text_unicode.hpp
+    util.hpp
+    var.cpp
+    <group condition="windows">
+      gl_windows.cpp
+      log_windows.cpp
+      os_file_windows.cpp
+      os_windows.cpp
+      os_windows.hpp
+      wide_text_buffer.cpp
+      wide_text_buffer.hpp
+     </group>
+     <group condition="!windows">
+      log_unix.cpp
+      os_file_unix.cpp
+      os_unix.cpp
+      os_unix.hpp
+    </group>
+  </group>
+</sources>

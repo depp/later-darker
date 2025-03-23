@@ -20,22 +20,23 @@ pub struct Args {
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
         let project_directory = paths::ProjectRoot::find_or(self.project_directory.as_deref())?;
-        let mut source_files = sources::SourceList::scan(&project_directory)?;
-        if let Some(config) = &self.config {
-            let n = source_files.sources.len();
-            source_files = source_files.filter(config)?;
-            let m = source_files.sources.len();
-            eprintln!("Config: {} / {} sources", m, n);
-        }
-        source_files.sort();
+        let source_list = sources::SourceList::read_project(&project_directory)?;
+        let sources = match &self.config {
+            None => source_list.all_sources(),
+            Some(config) => {
+                let sources = source_list.sources_for_config(&config)?;
+                eprintln!(
+                    "Config: {} / {} sources",
+                    sources.len(),
+                    source_list.count()
+                );
+                sources
+            }
+        };
 
         let mut out = String::new();
-        for src in source_files.sources.iter() {
+        for src in sources.iter() {
             out.push_str(src.path().as_str());
-            if let Some(expr) = src.build_tag() {
-                out.push(' ');
-                out.push_str(&expr.to_string());
-            }
             out.push('\n');
         }
         io::stdout().write(out.as_bytes())?;
