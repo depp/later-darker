@@ -1,3 +1,5 @@
+use crate::emit;
+use arcstr::ArcStr;
 use khronos_api;
 use roxmltree::{self, Document, Node, NodeType};
 use std::collections::{HashMap, HashSet};
@@ -6,9 +8,6 @@ use std::fmt::{self, Write as _};
 use std::ops::Range;
 use std::rc::Rc;
 use std::str;
-use std::sync::Arc;
-
-use crate::emit;
 
 const LINKABLE_VERSION: Version = Version(1, 1);
 const MAX_VERSION: Version = Version(3, 3);
@@ -293,9 +292,9 @@ impl<'a> FeatureSet<'a> {
     /// if they are probed at runtime. Link-time functions are left in because
     /// they have no binary size cost. Returns an error if any of the listed
     /// entry points are not present in the featureset.
-    fn trim_entry_points(&mut self, entry_points: &HashSet<Arc<str>>) -> Result<(), RError<'a>> {
+    fn trim_entry_points(&mut self, entry_points: &HashSet<ArcStr>) -> Result<(), RError<'a>> {
         for name in entry_points.iter() {
-            if !self.commands.contains_key(name.as_ref()) {
+            if !self.commands.contains_key(name.as_str()) {
                 return Err(ErrorKind::MissingCommand(name.to_string()).into());
             }
         }
@@ -644,7 +643,7 @@ fn emit_data(functions: &Functions) -> String {
 
 impl API {
     fn generate_doc<'a>(
-        entry_points: Option<&HashSet<Arc<str>>>,
+        entry_points: Option<&HashSet<ArcStr>>,
         root: Node<'a, 'a>,
     ) -> Result<Self, RError<'a>> {
         let type_map = TypeMap::create();
@@ -664,7 +663,7 @@ impl API {
     /// Generate an OpenGL API. By default, includes the entire OpenGL API. If
     /// entry_points is specified, then only those entry points are guaranteed
     /// to work.
-    pub fn generate(entry_points: Option<&HashSet<Arc<str>>>) -> Result<Self, GenerateError> {
+    pub fn generate(entry_points: Option<&HashSet<ArcStr>>) -> Result<Self, GenerateError> {
         let spec_data = khronos_api::GL_XML;
         let spec_data = str::from_utf8(spec_data).expect("XML registry is not UTF-8.");
         let doc = match Document::parse(spec_data) {

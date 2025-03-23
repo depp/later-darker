@@ -1,12 +1,12 @@
 use crate::emit;
 use crate::gl;
+use arcstr::ArcStr;
 use clap::Parser;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 /// Generate OpenGL API bindings.
 #[derive(Parser, Debug)]
@@ -38,9 +38,9 @@ impl Args {
     }
 }
 
-fn read_entry_points(path: &Path) -> io::Result<HashSet<Arc<str>>> {
+fn read_entry_points(path: &Path) -> io::Result<HashSet<ArcStr>> {
     let text = fs::read_to_string(path)?;
     let mut result = HashSet::new();
-    result.extend(text.lines().map(Arc::from));
+    result.extend(text.lines().map(ArcStr::from));
     Ok(result)
 }
