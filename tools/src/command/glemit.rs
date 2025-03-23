@@ -1,12 +1,9 @@
 use crate::emit;
 use crate::gl;
-use arcstr::ArcStr;
 use clap::Parser;
-use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// Generate OpenGL API bindings.
 #[derive(Parser, Debug)]
@@ -26,21 +23,16 @@ pub struct Args {
 
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
-        let entry_points = self
-            .entry_points
-            .as_deref()
-            .map(read_entry_points)
-            .transpose()?;
-        let api = gl::API::generate(entry_points.as_ref())?;
-        emit::write_or_stdout(self.output_header.as_deref(), api.header.as_bytes())?;
-        emit::write_or_stdout(self.output_data.as_deref(), api.data.as_bytes())?;
+        let api = gl::API::create()?;
+        let bindings = match &self.entry_points {
+            None => api.make_bindings(),
+            Some(path) => {
+                let text = fs::read_to_string(path)?;
+                api.make_subset_bindings(text.lines())?
+            }
+        };
+        emit::write_or_stdout(self.output_header.as_deref(), bindings.header.as_bytes())?;
+        emit::write_or_stdout(self.output_data.as_deref(), bindings.data.as_bytes())?;
         Ok(())
     }
-}
-
-fn read_entry_points(path: &Path) -> io::Result<HashSet<ArcStr>> {
-    let text = fs::read_to_string(path)?;
-    let mut result = HashSet::new();
-    result.extend(text.lines().map(ArcStr::from));
-    Ok(result)
 }

@@ -6,7 +6,6 @@ use roxmltree::{self, Document, Node, NodeType, TextPos};
 use std::collections::{HashMap, HashSet};
 use std::error;
 use std::fmt::{self, Write as _};
-use std::rc::Rc;
 use std::str;
 
 const LINKABLE_VERSION: Version = Version(1, 1);
@@ -17,11 +16,9 @@ const MAX_VERSION: Version = Version(3, 3);
 pub enum GenError {
     MissingCommandProto(TextPos),
     MissingCommandName(TextPos),
-    MissingCommand(ArcStr),
     InvalidVersion(ArcStr, TextPos),
     InvalidRemoveProfile(TextPos),
     DuplicateEnum(ArcStr),
-    DuplicateFunction(ArcStr),
     InvalidPrototype(TextPos),
     AliasConflict(ArcStr, ArcStr),
     UnknownType(ArcStr, TextPos),
@@ -39,15 +36,11 @@ impl fmt::Display for GenError {
         match self {
             MissingCommandProto(pos) => write!(f, "missing command <proto> at {}", pos),
             MissingCommandName(pos) => write!(f, "missing command <name> at {}", pos),
-            MissingCommand(name) => {
-                write!(f, "could not find command definition: {:?}", name)
-            }
             InvalidVersion(version, pos) => {
                 write!(f, "invalid version number {:?} at {}", version, pos)
             }
             InvalidRemoveProfile(pos) => write!(f, "invalid profile for remove at {}", pos),
             DuplicateEnum(name) => write!(f, "duplicate enum {:?}", name),
-            DuplicateFunction(name) => write!(f, "dupliacte function {:?}", name),
             InvalidPrototype(pos) => write!(f, "invalid prototype at {}", pos),
             AliasConflict(name, alias) => write!(
                 f,
@@ -65,6 +58,20 @@ impl error::Error for GenError {}
 type Error = xmlparse::Error<GenError>;
 
 // ============================================================================
+
+fn element_children<'a>(node: Node<'a, 'a>) -> impl Iterator<Item = Node<'a, 'a>> {
+    node.children().filter(|c| c.is_element())
+}
+
+fn element_children_tag<'a>(
+    node: Node<'a, 'a>,
+    name: &'static str,
+) -> impl Iterator<Item = Node<'a, 'a>> {
+    node.children()
+        .filter(move |c| c.is_element() && c.tag_name().name() == name)
+}
+
+// ============================================================================
 // Feature & Version Map
 // ============================================================================
 
@@ -80,13 +87,11 @@ impl Version {
     }
 }
 
-/// Where a function is available to be called.
+/// How OpenGL functions are called.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Availability {
-    /// The function is not available.
-    Missing,
-    /// The function may be linked directly at build time.
-    Link,
+enum CallType {
+    /// The call can resolved at link-time.
+    Linker,
     /// The function must be loaded by pointer at runtime.
     Runtime,
 }
@@ -94,7 +99,7 @@ enum Availability {
 /// A set of features included in an API.
 struct FeatureSet<'a> {
     enums: HashSet<&'a str>,
-    commands: HashMap<&'a str, Availability>,
+    commands: HashMap<&'a str, CallType>,
 }
 
 impl<'a> FeatureSet<'a> {
@@ -125,9 +130,9 @@ impl<'a> FeatureSet<'a> {
             Some(version) => version,
         };
         let availability = if version <= LINKABLE_VERSION {
-            Availability::Link
+            CallType::Linker
         } else if version <= MAX_VERSION {
-            Availability::Runtime
+            CallType::Runtime
         } else {
             return Ok(());
         };
@@ -143,11 +148,7 @@ impl<'a> FeatureSet<'a> {
         Ok(())
     }
 
-    fn parse_require(
-        &mut self,
-        node: Node<'a, 'a>,
-        availability: Availability,
-    ) -> Result<(), Error> {
+    fn parse_require(&mut self, node: Node<'a, 'a>, availability: CallType) -> Result<(), Error> {
         assert_eq!(node.tag_name().name(), "require");
         for child in node.children() {
             if child.is_element() {
@@ -192,40 +193,11 @@ impl<'a> FeatureSet<'a> {
         }
         Ok(())
     }
-
-    /// Limit which entry points are available. All of the listed entry points
-    /// are guaranteed to be included. Entry points outside the set are removed
-    /// if they are probed at runtime. Link-time functions are left in because
-    /// they have no binary size cost. Returns an error if any of the listed
-    /// entry points are not present in the featureset.
-    fn trim_entry_points(&mut self, entry_points: &HashSet<ArcStr>) -> Result<(), Error> {
-        for name in entry_points.iter() {
-            if !self.commands.contains_key(name.as_str()) {
-                return Err(GenError::MissingCommand(name.clone()).err());
-            }
-        }
-        for (&name, value) in self.commands.iter_mut() {
-            if *value == Availability::Runtime && !entry_points.contains(name) {
-                *value = Availability::Missing;
-            }
-        }
-        Ok(())
-    }
 }
 
 // ============================================================================
-
-fn element_children<'a>(node: Node<'a, 'a>) -> impl Iterator<Item = Node<'a, 'a>> {
-    node.children().filter(|c| c.is_element())
-}
-
-fn element_children_tag<'a>(
-    node: Node<'a, 'a>,
-    name: &'static str,
-) -> impl Iterator<Item = Node<'a, 'a>> {
-    node.children()
-        .filter(move |c| c.is_element() && c.tag_name().name() == name)
-}
+// Enums
+// ============================================================================
 
 /// Emit enum value definitions.
 fn emit_enums<'a>(
@@ -292,6 +264,19 @@ fn emit_enums<'a>(
         }
     }
     Ok(out)
+}
+
+// ============================================================================
+// Functions
+// ============================================================================
+
+#[derive(Debug, Clone)]
+struct Function {
+    name: ArcStr,
+    call: CallType,
+    return_type: String,
+    parameter_declarations: String,
+    parameter_names: String,
 }
 
 /// Get the name and prototype for a command.
@@ -389,84 +374,229 @@ fn emit_parameters<'a>(node: Node<'a, 'a>, type_map: &TypeMap) -> Result<(String
     Ok((declarations, names))
 }
 
-struct Functions {
-    functions: String,
-    lookups: Vec<Rc<str>>,
+impl Function {
+    /// Parse an individual command, if it is in the command list. Otherwise
+    /// return None.
+    fn parse(
+        commands: &HashMap<&str, CallType>,
+        node: Node,
+        type_map: &TypeMap,
+    ) -> Result<Option<Self>, Error> {
+        let (name, proto) = command_info(node)?;
+        let Some(&call) = commands.get(name.as_str()) else {
+            return Ok(None);
+        };
+        let return_type = emit_return_type(proto, type_map)?;
+        let (parameter_declarations, parameter_names) = emit_parameters(node, type_map)?;
+        Ok(Some(Function {
+            name: name.into(),
+            call,
+            return_type,
+            parameter_declarations,
+            parameter_names,
+        }))
+    }
+
+    /// Parse all commands in the command list.
+    fn parse_all(
+        commands: &HashMap<&str, CallType>,
+        node: Node,
+        type_map: &TypeMap,
+    ) -> Result<Vec<Self>, Error> {
+        let mut result = Vec::with_capacity(commands.len());
+        for child in element_children_tag(node, "commands") {
+            for item in element_children(child) {
+                if item.tag_name().name() != "command" {
+                    return Err(xmlparse::unexpected_tag(item, child));
+                }
+                if let Some(function) = Self::parse(commands, item, type_map)? {
+                    result.push(function);
+                }
+            }
+        }
+        Ok(result)
+    }
+
+    /// Emit a linked API binding to this function.
+    fn emit_linked(&self, out: &mut String) {
+        write!(
+            out,
+            "GLIMPORT {} GLAPI {}({});\n",
+            self.return_type, self.name, self.parameter_declarations
+        )
+        .unwrap();
+    }
+
+    /// Emit a missing binding to this function, which may not be called.
+    fn emit_missing(&self, out: &mut String) {
+        writeln!(
+            out,
+            "{} {}({}); // undefined",
+            self.return_type, self.name, self.parameter_declarations
+        )
+        .unwrap();
+    }
+
+    /// Emit a runtime binding to this function.
+    fn emit_runtime(&self, out: &mut String, index: usize) {
+        write!(
+            out,
+            "inline {} {}({}) {{\n\
+            \tusing Proc = {} (GLAPI *)({});\n\t",
+            self.return_type,
+            self.name,
+            self.parameter_declarations,
+            self.return_type,
+            self.parameter_declarations
+        )
+        .unwrap();
+        if self.return_type != "void" {
+            out.push_str("return ");
+        }
+        write!(
+            out,
+            "static_cast<Proc>(demo::gl_api::FunctionPointers[{}])({});\n}}\n",
+            index, self.parameter_names
+        )
+        .unwrap();
+    }
 }
 
-/// Emit OpenGL function interfaces.
-fn emit_functions<'a>(
-    commands: &HashMap<&'a str, Availability>,
-    node: Node<'a, 'a>,
-    type_map: &TypeMap,
-) -> Result<Functions, Error> {
-    let mut out = String::new();
-    let mut lookups = Vec::with_capacity(commands.len());
-    let mut emitted: HashSet<Rc<str>> = HashSet::with_capacity(commands.len());
-    for child in element_children_tag(node, "commands") {
-        for item in element_children(child) {
-            if item.tag_name().name() != "command" {
-                return Err(xmlparse::unexpected_tag(item, child));
-            }
-            let (name, proto) = command_info(item)?;
-            let Some(&availability) = commands.get(name.as_str()) else {
-                continue;
-            };
-            if emitted.contains(name.as_str()) {
-                return Err(GenError::DuplicateFunction(name.into()).err());
-            }
-            let name: Rc<str> = name.into();
-            let return_type = emit_return_type(proto, type_map)?;
-            let (declarations, names) = emit_parameters(item, type_map)?;
-            match availability {
-                Availability::Missing => {
-                    writeln!(
-                        out,
-                        "{} {}({}); // undefined",
-                        return_type, name, declarations
-                    )
-                    .unwrap();
-                }
-                Availability::Link => {
-                    write!(
-                        out,
-                        "GLIMPORT {} GLAPI {}({});\n",
-                        return_type, name, declarations
-                    )
-                    .unwrap();
-                }
-                Availability::Runtime => {
-                    let index = lookups.len();
-                    lookups.push(name.clone());
-                    write!(
-                        out,
-                        "inline {} {}({}) {{\n\
-                        \tusing Proc = {} (GLAPI *)({});\n\t",
-                        return_type, name, declarations, return_type, declarations
-                    )
-                    .unwrap();
-                    if return_type != "void" {
-                        out.push_str("return ");
-                    }
-                    write!(
-                        out,
-                        "static_cast<Proc>(demo::gl_api::FunctionPointers[{}])({});\n}}\n",
-                        index, names
-                    )
-                    .unwrap();
+// ============================================================================
+// API
+// ============================================================================
+
+/// An OpenGL API subset.
+pub struct API {
+    enums: String,
+    functions: Vec<Function>,
+}
+
+impl API {
+    fn parse(node: Node) -> Result<Self, Error> {
+        let type_map = TypeMap::create();
+        if node.tag_name().name() != "registry" {
+            return Err(xmlparse::unexpected_root(node));
+        }
+        let features = FeatureSet::build(node)?;
+        let enums = emit_enums(&features.enums, node, &type_map)?;
+        let functions = Function::parse_all(&features.commands, node, &type_map)?;
+        Ok(API { enums, functions })
+    }
+
+    /// Create an OpenGL API.
+    pub fn create() -> Result<Self, Error> {
+        let spec_data = khronos_api::GL_XML;
+        let spec_data = str::from_utf8(spec_data).expect("XML registry is not UTF-8.");
+        let doc = Document::parse(spec_data)?;
+        Self::parse(doc.root_element())
+    }
+
+    /// Create bindings for this API.
+    pub fn make_bindings(&self) -> Bindings {
+        self.make_bindings_impl(None)
+    }
+
+    /// Create bindings for a subset of this API.
+    pub fn make_subset_bindings<T>(&self, subset: T) -> Result<Bindings, UnknownFunctions>
+    where
+        T: IntoIterator,
+        <<T as IntoIterator>::IntoIter as Iterator>::Item: AsRef<str>,
+    {
+        let mut all: HashSet<&str> = HashSet::new();
+        for function in self.functions.iter() {
+            all.insert(function.name.as_str());
+        }
+        let mut set: HashSet<&str> = HashSet::new();
+        let mut unknown = Vec::new();
+        for item in subset.into_iter() {
+            let item = item.as_ref();
+            match all.get(item) {
+                None => unknown.push(item.to_string()),
+                Some(&s) => {
+                    set.insert(s);
                 }
             }
-            emitted.insert(name);
+        }
+        if !unknown.is_empty() {
+            return Err(UnknownFunctions(unknown));
+        }
+        Ok(self.make_bindings_impl(Some(&set)))
+    }
+
+    fn make_bindings_impl(&self, subset: Option<&HashSet<&str>>) -> Bindings {
+        let functions = Functions::emit(self, subset);
+        Bindings {
+            header: emit_header(&self.enums, &functions),
+            data: emit_data(&functions),
         }
     }
-    Ok(Functions {
-        functions: out,
-        lookups,
-    })
+}
+
+/// Indicates that some requested functions do not exist in this API.
+#[derive(Debug)]
+pub struct UnknownFunctions(Vec<String>);
+
+impl fmt::Display for UnknownFunctions {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("unknown OpenGL functions: ")?;
+        for (n, function) in self.0.iter().enumerate() {
+            if n != 0 {
+                f.write_str(", ")?;
+            }
+            if !function.is_empty()
+                && function
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_')
+            {
+                f.write_str(function)?;
+            } else {
+                write!(f, "{:?}", function)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl error::Error for UnknownFunctions {}
+
+// ============================================================================
+// Bindings
+// ============================================================================
+
+struct Functions {
+    functions: String,
+    lookups: Vec<ArcStr>,
+}
+
+impl Functions {
+    fn emit(api: &API, subset: Option<&HashSet<&str>>) -> Self {
+        let mut functions = String::new();
+        let mut lookups: Vec<ArcStr> = Vec::new();
+        for function in api.functions.iter() {
+            match function.call {
+                CallType::Linker => function.emit_linked(&mut functions),
+                CallType::Runtime => {
+                    let include = match subset {
+                        None => true,
+                        Some(set) => set.contains(function.name.as_str()),
+                    };
+                    if include {
+                        let index = lookups.len();
+                        lookups.push(function.name.clone());
+                        function.emit_runtime(&mut functions, index);
+                    } else {
+                        function.emit_missing(&mut functions);
+                    }
+                }
+            }
+        }
+        Functions { functions, lookups }
+    }
 }
 
 /// Generated OpenGL API bindings.
-pub struct API {
+pub struct Bindings {
     pub header: String,
     pub data: String,
 }
@@ -540,40 +670,6 @@ fn emit_data(functions: &Functions) -> String {
     writer.finish();
     out.push_str(";\n}\n}\n");
     out
-}
-
-impl API {
-    fn generate_doc<'a>(
-        entry_points: Option<&HashSet<ArcStr>>,
-        root: Node<'a, 'a>,
-    ) -> Result<Self, Error> {
-        if root.tag_name().name() != "registry" {
-            return Err(xmlparse::unexpected_root(root));
-        }
-        let type_map = TypeMap::create();
-        let mut features = FeatureSet::build(root)?;
-        if let Some(entry_points) = entry_points {
-            features.trim_entry_points(entry_points)?;
-        }
-        let enums = emit_enums(&features.enums, root, &type_map)?;
-        let functions = emit_functions(&features.commands, root, &type_map)?;
-
-        Ok(API {
-            header: emit_header(&enums, &functions),
-            data: emit_data(&functions),
-        })
-    }
-
-    /// Generate an OpenGL API. By default, includes the entire OpenGL API. If
-    /// entry_points is specified, then only those entry points are guaranteed
-    /// to work.
-    pub fn generate(entry_points: Option<&HashSet<ArcStr>>) -> Result<Self, Error> {
-        let spec_data = khronos_api::GL_XML;
-        let spec_data = str::from_utf8(spec_data).expect("XML registry is not UTF-8.");
-        let doc = Document::parse(spec_data)?;
-        let root = doc.root_element();
-        API::generate_doc(entry_points, root)
-    }
 }
 
 struct TypeMap(HashMap<&'static str, &'static str>);

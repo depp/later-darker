@@ -64,7 +64,7 @@ impl Args {
         outputs.add_directory(root.resolve(&ProjectPath::GENERATED));
 
         // Generate OpenGL bindings.
-        let api = gl::API::generate(None)?;
+        let api = gl::API::create()?.make_bindings();
         outputs.add_file(root.resolve(&gl_header.path()), api.header);
         outputs.add_file(root.resolve(&gl_source.path()), api.data);
 
