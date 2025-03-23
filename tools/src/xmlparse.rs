@@ -111,3 +111,17 @@ pub fn parse_text_contents<T>(node: Node) -> Result<String, Error<T>> {
     append_text_contents(&mut out, node)?;
     Ok(out)
 }
+
+/// Iterate over children of a node.
+pub fn element_children<'a>(node: Node<'a, 'a>) -> impl Iterator<Item = Node<'a, 'a>> {
+    node.children().filter(|c| c.is_element())
+}
+
+/// Iterate over children of a node with the given tag.
+pub fn element_children_tag<'a>(
+    node: Node<'a, 'a>,
+    name: &'static str,
+) -> impl Iterator<Item = Node<'a, 'a>> {
+    node.children()
+        .filter(move |c| c.is_element() && c.tag_name().name() == name)
+}

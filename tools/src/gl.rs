@@ -1,5 +1,5 @@
 use crate::emit;
-use crate::xmlparse::{self, node_pos, require_attribute};
+use crate::xmlparse::{self, element_children, element_children_tag, node_pos, require_attribute};
 use arcstr::ArcStr;
 use khronos_api;
 use roxmltree::{self, Document, Node, NodeType, TextPos};
@@ -56,20 +56,6 @@ impl error::Error for GenError {}
 
 /// An error generating an OpenGL API.
 type Error = xmlparse::Error<GenError>;
-
-// ============================================================================
-
-fn element_children<'a>(node: Node<'a, 'a>) -> impl Iterator<Item = Node<'a, 'a>> {
-    node.children().filter(|c| c.is_element())
-}
-
-fn element_children_tag<'a>(
-    node: Node<'a, 'a>,
-    name: &'static str,
-) -> impl Iterator<Item = Node<'a, 'a>> {
-    node.children()
-        .filter(move |c| c.is_element() && c.tag_name().name() == name)
-}
 
 // ============================================================================
 // Feature & Version Map
