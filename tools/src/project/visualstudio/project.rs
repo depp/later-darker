@@ -1,5 +1,5 @@
-use super::paths::ProjectPath;
 use crate::emit;
+use crate::project::paths::ProjectPath;
 use crate::xmlgen::{Element, XML};
 use arcstr::{ArcStr, literal};
 use std::collections::HashMap;
