@@ -11,6 +11,7 @@ mod project;
 mod shader;
 mod vsenv;
 mod xmlgen;
+mod xmlparse;
 
 fn main() {
     let cmd = command::Command::parse();
