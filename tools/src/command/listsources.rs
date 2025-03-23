@@ -32,10 +32,8 @@ impl Args {
         let mut out = String::new();
         for src in source_files.sources.iter() {
             out.push_str(src.path().as_str());
-            if let Some(expr) = src.build_tag() {
-                out.push(' ');
-                out.push_str(&expr.to_string());
-            }
+            out.push(' ');
+            out.push_str(&src.condition().to_string());
             out.push('\n');
         }
         io::stdout().write(out.as_bytes())?;
