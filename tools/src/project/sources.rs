@@ -1,7 +1,6 @@
 use super::condition::{self, Condition, EvalError};
 use super::config;
-use super::paths::ProjectPath;
-use super::paths::{self, ProjectRoot};
+use super::paths::{self, ProjectPath, ProjectRoot};
 use crate::xmlparse::{self, attr_pos, unexpected_attribute, unexpected_root, unexpected_tag};
 use arcstr::ArcStr;
 use roxmltree::{Node, NodeType, TextPos};
