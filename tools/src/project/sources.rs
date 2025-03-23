@@ -1,5 +1,4 @@
-use super::condition;
-use super::condition::Condition;
+use super::buildtag;
 use super::config;
 use super::paths;
 use super::paths::{ProjectPath, ProjectRoot};
@@ -49,7 +48,8 @@ pub struct Source {
 
     path: ProjectPath,
 
-    condition: Condition,
+    /// Build tag, if present.
+    build_tag: Option<Arc<buildtag::Expression>>,
 }
 
 impl Source {
@@ -60,7 +60,7 @@ impl Source {
         Ok(Arc::new(Source {
             ty,
             path,
-            condition: Condition::Value(true),
+            build_tag: None,
         }))
     }
 
@@ -75,13 +75,16 @@ impl Source {
     }
 
     /// Test whether this source is included in the given config.
-    pub fn is_in_config(&self, config: &config::Config) -> Result<bool, condition::EvalError> {
-        self.condition.evaluate(|tag| config.eval_tag(tag))
+    pub fn is_in_config(&self, config: &config::Config) -> Result<bool, buildtag::EvalError> {
+        match &self.build_tag {
+            None => Ok(true),
+            Some(expr) => expr.evaluate(|tag| config.eval_tag(tag)),
+        }
     }
 
     /// Get the build tag for this source file.
-    pub fn condition(&self) -> &Condition {
-        &self.condition
+    pub fn build_tag(&self) -> Option<&buildtag::Expression> {
+        self.build_tag.as_deref()
     }
 }
 
@@ -103,7 +106,7 @@ impl fmt::Display for ScanError {
 impl error::Error for ScanError {}
 
 #[derive(Debug, Clone)]
-pub struct FilterError(ProjectPath, pub condition::EvalError);
+pub struct FilterError(ProjectPath, pub buildtag::EvalError);
 
 impl fmt::Display for FilterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -160,21 +163,21 @@ impl SourceList {
                     continue;
                 }
             };
-            let condition = match read_build_tag(&project_root.resolve(&path)) {
+            let build_tag = match read_build_tag(&project_root.resolve(&path)) {
                 Ok(e) => e,
                 Err(e) => return Err(ScanError::BuildTag(path, e)),
             };
-            let condition = match condition {
+            let build_tag = match build_tag {
                 None => match build_tag_from_filename(&name) {
-                    None => Condition::Value(true),
-                    Some(tag) => Condition::Atom(tag.into()),
+                    None => None,
+                    Some(tag) => Some(buildtag::Expression::tag(tag.into())),
                 },
-                Some(value) => value,
+                Some(value) => Some(value),
             };
             sources.push(Arc::new(Source {
                 ty,
                 path,
-                condition,
+                build_tag: build_tag.map(Arc::new),
             }));
         }
         Ok(SourceList { sources })
@@ -207,7 +210,7 @@ impl SourceList {
 #[derive(Debug)]
 pub enum BuildTagError {
     IO(io::Error),
-    Parse(u32, condition::ParseError),
+    Parse(u32, buildtag::ParseError),
 }
 
 impl From<io::Error> for BuildTagError {
@@ -228,7 +231,7 @@ impl fmt::Display for BuildTagError {
 impl error::Error for BuildTagError {}
 
 /// Read the build tag for a single file.
-fn read_build_tag(path: &Path) -> Result<Option<condition::Condition>, BuildTagError> {
+fn read_build_tag(path: &Path) -> Result<Option<buildtag::Expression>, BuildTagError> {
     let file = fs::File::open(path)?;
     let mut reader = io::BufReader::new(file);
     let mut line = Vec::new();
@@ -245,8 +248,8 @@ fn read_build_tag(path: &Path) -> Result<Option<condition::Condition>, BuildTagE
             const PREFIX: &[u8] = b"//build:";
             if line.starts_with(PREFIX) {
                 let line = line[PREFIX.len()..].trim_ascii();
-                return match condition::Condition::parse(line) {
-                    Ok(condition) => Ok(Some(condition)),
+                return match buildtag::Expression::parse(line) {
+                    Ok(e) => Ok(Some(e)),
                     Err(e) => Err(BuildTagError::Parse(lineno, e)),
                 };
             }
