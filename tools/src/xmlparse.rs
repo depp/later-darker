@@ -12,50 +12,56 @@ pub fn attr_pos(node: Node, attr: Attribute) -> TextPos {
     node.document().text_pos_at(attr.range().start)
 }
 
-#[derive(Debug)]
-pub struct TagPos {
-    pub tag: String,
-    pub pos: TextPos,
-}
-
-impl From<Node<'_, '_>> for TagPos {
-    fn from(value: Node<'_, '_>) -> Self {
-        TagPos {
-            tag: value.tag_name().name().into(),
-            pos: node_pos(value),
-        }
-    }
-}
-
 /// An error from parsing an XML document.
 #[derive(Debug)]
 pub enum Error {
-    UnexpectedRoot(TagPos),
-    UnexpectedTag(TagPos, String),
-    MissingAttribute(TagPos, String),
-    UnexpectedAttribute(TagPos, String),
+    UnexpectedRoot {
+        tag: String,
+        pos: TextPos,
+    },
+    UnexpectedTag {
+        tag: String,
+        parent: String,
+        pos: TextPos,
+    },
+    MissingAttribute {
+        attribute: String,
+        parent: String,
+        pos: TextPos,
+    },
+    UnexpectedAttribute {
+        attribute: String,
+        parent: String,
+        pos: TextPos,
+    },
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::UnexpectedRoot(tag) => {
-                write!(f, "unexpected root tag <{}> at {}", tag.tag, tag.pos)
+            Error::UnexpectedRoot { tag, pos } => {
+                write!(f, "unexpected root tag <{}> at {}", tag, pos)
             }
-            Error::UnexpectedTag(tag, parent) => write!(
-                f,
-                "unexpected tag <{}> at {} in <{}>",
-                tag.tag, tag.pos, parent
-            ),
-            Error::MissingAttribute(tag, attribute) => write!(
+            Error::UnexpectedTag { tag, parent, pos } => {
+                write!(f, "unexpected tag <{}> at {} in <{}>", tag, pos, parent)
+            }
+            Error::MissingAttribute {
+                attribute,
+                parent,
+                pos,
+            } => write!(
                 f,
                 "missing required attribute '{}' in <{}> at {}",
-                attribute, tag.tag, tag.pos
+                attribute, parent, pos
             ),
-            Error::UnexpectedAttribute(tag, attribute) => write!(
+            Error::UnexpectedAttribute {
+                attribute,
+                parent,
+                pos,
+            } => write!(
                 f,
                 "unexpected attribute '{}' in <{}> at {}",
-                attribute, tag.tag, tag.pos
+                attribute, parent, pos
             ),
         }
     }
@@ -65,30 +71,39 @@ impl error::Error for Error {}
 
 /// Create an error for an unexpected tag.
 pub fn unexpected_tag(node: Node, parent: Node) -> Error {
-    Error::UnexpectedTag(node.into(), parent.tag_name().name().into())
+    Error::UnexpectedTag {
+        tag: node.tag_name().name().into(),
+        parent: parent.tag_name().name().into(),
+        pos: node.document().text_pos_at(node.range().start),
+    }
 }
 
 /// Create an error for an unexpected root tag.
 pub fn unexpected_root(node: Node) -> Error {
-    Error::UnexpectedRoot(node.into())
+    Error::UnexpectedRoot {
+        tag: node.tag_name().name().into(),
+        pos: node.document().text_pos_at(node.range().start),
+    }
 }
 
 /// Create an error for an unexpected or unknown attribute.
 pub fn unexpected_attribute(node: Node, attr: Attribute) -> Error {
-    Error::UnexpectedAttribute(
-        TagPos {
-            tag: node.tag_name().name().into(),
-            pos: attr_pos(node, attr),
-        },
-        attr.name().into(),
-    )
+    Error::UnexpectedAttribute {
+        attribute: attr.name().into(),
+        parent: node.tag_name().name().into(),
+        pos: node.document().text_pos_at(node.range().start),
+    }
 }
 
 /// Get a required attribute from a node, or return an error if the attribute is
 /// not present.
 pub fn require_attribute<'a>(node: Node<'a, '_>, name: &str) -> Result<&'a str, Error> {
     match node.attribute(name) {
-        None => Err(Error::MissingAttribute(node.into(), name.into())),
+        None => Err(Error::MissingAttribute {
+            attribute: name.into(),
+            parent: node.tag_name().name().into(),
+            pos: node.document().text_pos_at(node.range().start),
+        }),
         Some(value) => Ok(value),
     }
 }
