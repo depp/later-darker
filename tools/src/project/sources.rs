@@ -2,7 +2,6 @@ use super::condition::{self, Condition, EvalError};
 use super::config;
 use super::paths::{self, ProjectPath, ProjectRoot};
 use crate::xmlparse::{self, attr_pos, unexpected_attribute, unexpected_root, unexpected_tag};
-use arcstr::ArcStr;
 use roxmltree::{Node, NodeType, TextPos};
 use std::error;
 use std::fmt;
@@ -81,8 +80,8 @@ impl Source {
 pub enum InnerReadError {
     IO(io::Error),
     BuildTag(condition::ParseError, TextPos),
-    BadPath(ArcStr, paths::PathError),
-    UnknownExtension(ArcStr),
+    BadPath(String, paths::PathError),
+    UnknownExtension(String),
 }
 
 impl InnerReadError {

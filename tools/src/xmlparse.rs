@@ -1,4 +1,3 @@
-use arcstr::ArcStr;
 use roxmltree::{Attribute, Node, NodeType, TextPos};
 use std::error;
 use std::fmt;
@@ -13,16 +12,16 @@ pub fn attr_pos(node: Node, attr: Attribute) -> TextPos {
     node.document().text_pos_at(attr.range().start)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TagPos {
-    pub tag: ArcStr,
+    pub tag: String,
     pub pos: TextPos,
 }
 
 impl From<Node<'_, '_>> for TagPos {
     fn from(value: Node<'_, '_>) -> Self {
         TagPos {
-            tag: ArcStr::from(value.tag_name().name()),
+            tag: value.tag_name().name().into(),
             pos: node_pos(value),
         }
     }
@@ -33,9 +32,9 @@ impl From<Node<'_, '_>> for TagPos {
 pub enum Error<T> {
     XML(roxmltree::Error),
     UnexpectedRoot(TagPos),
-    UnexpectedTag(TagPos, ArcStr),
-    MissingAttribute(TagPos, ArcStr),
-    UnexpectedAttribute(TagPos, ArcStr),
+    UnexpectedTag(TagPos, String),
+    MissingAttribute(TagPos, String),
+    UnexpectedAttribute(TagPos, String),
     Other(T),
 }
 
@@ -80,7 +79,7 @@ impl<T> error::Error for Error<T> where T: error::Error {}
 
 /// Create an error for an unexpected tag.
 pub fn unexpected_tag<T>(node: Node, parent: Node) -> Error<T> {
-    Error::UnexpectedTag(node.into(), ArcStr::from(parent.tag_name().name()))
+    Error::UnexpectedTag(node.into(), parent.tag_name().name().into())
 }
 
 /// Create an error for an unexpected root tag.
@@ -92,7 +91,7 @@ pub fn unexpected_root<T>(node: Node) -> Error<T> {
 pub fn unexpected_attribute<T>(node: Node, attr: Attribute) -> Error<T> {
     Error::UnexpectedAttribute(
         TagPos {
-            tag: ArcStr::from(node.tag_name().name()),
+            tag: node.tag_name().name().into(),
             pos: attr_pos(node, attr),
         },
         attr.name().into(),
@@ -103,7 +102,7 @@ pub fn unexpected_attribute<T>(node: Node, attr: Attribute) -> Error<T> {
 /// not present.
 pub fn require_attribute<'a, T>(node: Node<'a, '_>, name: &str) -> Result<&'a str, Error<T>> {
     match node.attribute(name) {
-        None => Err(Error::MissingAttribute(node.into(), ArcStr::from(name))),
+        None => Err(Error::MissingAttribute(node.into(), name.into())),
         Some(value) => Ok(value),
     }
 }

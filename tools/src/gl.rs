@@ -12,16 +12,16 @@ const LINKABLE_VERSION: Version = Version(1, 1);
 const MAX_VERSION: Version = Version(3, 3);
 
 /// An error genrating the OpenGL API.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum GenError {
     MissingCommandProto(TextPos),
     MissingCommandName(TextPos),
-    InvalidVersion(ArcStr, TextPos),
+    InvalidVersion(String, TextPos),
     InvalidRemoveProfile(TextPos),
-    DuplicateEnum(ArcStr),
+    DuplicateEnum(String),
     InvalidPrototype(TextPos),
-    AliasConflict(ArcStr, ArcStr),
-    UnknownType(ArcStr, TextPos),
+    AliasConflict(String, String),
+    UnknownType(String, TextPos),
 }
 
 impl GenError {
