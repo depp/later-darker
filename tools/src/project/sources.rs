@@ -1,8 +1,11 @@
 use super::condition::{self, Condition, EvalError};
 use super::config;
 use super::paths::{self, ProjectPath, ProjectRoot};
-use crate::xmlparse::{self, attr_pos, unexpected_attribute, unexpected_root, unexpected_tag};
-use roxmltree::{Node, NodeType, TextPos};
+use crate::xmlparse::{
+    self, attr_pos, elements_children, missing_attribute, unexpected_attribute, unexpected_root,
+    unexpected_tag,
+};
+use roxmltree::{Node, TextPos};
 use std::error;
 use std::fmt;
 use std::fs;
@@ -78,9 +81,19 @@ impl Source {
 /// Error reading a project spec.
 #[derive(Debug)]
 pub enum ReadError {
-    BuildTag(condition::ParseError, TextPos),
-    BadPath(String, paths::PathError),
-    UnknownExtension(String),
+    Condition {
+        err: condition::ParseError,
+        pos: TextPos,
+    },
+    BadPath {
+        path: String,
+        err: paths::PathError,
+        pos: TextPos,
+    },
+    UnknownExtension {
+        path: String,
+        pos: TextPos,
+    },
     IO(io::Error),
     XML(xmlparse::Error),
     Parse(roxmltree::Error),
@@ -107,12 +120,14 @@ impl From<roxmltree::Error> for ReadError {
 impl fmt::Display for ReadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ReadError::BuildTag(err, pos) => {
+            ReadError::Condition { err, pos } => {
                 write!(f, "invalid condition at {}: {}", pos, err)
             }
-            ReadError::BadPath(path, err) => write!(f, "invalid path {:?}: {}", path, err),
-            ReadError::UnknownExtension(path) => {
-                write!(f, "file {:?} has unknown extension", path)
+            ReadError::BadPath { path, err, pos } => {
+                write!(f, "invalid path {:?} at {}: {}", path, pos, err)
+            }
+            ReadError::UnknownExtension { path, pos } => {
+                write!(f, "file {:?} at {} has unknown extension", path, pos)
             }
             ReadError::IO(e) => write!(f, "failed to read: {}", e),
             ReadError::XML(err) => err.fmt(f),
@@ -191,6 +206,38 @@ struct Group {
     subgroups: Vec<Group>,
 }
 
+/// Parse a <src> tag.
+fn parse_source(node: Node) -> Result<Arc<Source>, ReadError> {
+    let mut type_path: Option<(SourceType, ProjectPath)> = None;
+    for attr in node.attributes() {
+        match attr.name() {
+            "path" => match ProjectPath::SRC.append(attr.value()) {
+                Ok(path) => {
+                    let Some(ty) = path.extension().and_then(SourceType::for_extension) else {
+                        return Err(ReadError::UnknownExtension {
+                            path: attr.value().to_string(),
+                            pos: attr_pos(node, attr),
+                        });
+                    };
+                    type_path = Some((ty, path));
+                }
+                Err(err) => {
+                    return Err(ReadError::BadPath {
+                        path: attr.value().into(),
+                        err,
+                        pos: attr_pos(node, attr),
+                    });
+                }
+            },
+            _ => return Err(unexpected_attribute(node, attr).into()),
+        }
+    }
+    let Some((ty, path)) = type_path else {
+        return Err(missing_attribute(node, "path").into());
+    };
+    Ok(Arc::new(Source { ty, path }))
+}
+
 impl Group {
     /// Parse a group in an XML document.
     fn parse(node: Node) -> Result<Self, ReadError> {
@@ -204,41 +251,23 @@ impl Group {
                 "condition" => match Condition::parse(attr.value().as_bytes()) {
                     Ok(condition) => result.condition = Some(condition),
                     Err(err) => {
-                        return Err(ReadError::BuildTag(err, attr_pos(node, attr)));
+                        return Err(ReadError::Condition {
+                            err,
+                            pos: attr_pos(node, attr),
+                        });
                     }
                 },
                 _ => return Err(unexpected_attribute(node, attr).into()),
             }
         }
-        // Combine all text and parse it once combined, in case adjacent text
-        // nodes are not combined.
-        let mut text = String::new();
-        for child in node.children() {
-            match child.node_type() {
-                NodeType::Element => {
-                    text.push(' ');
-                    match child.tag_name().name() {
-                        "group" => result.subgroups.push(Group::parse(child)?),
-                        _ => return Err(unexpected_tag(child, node).into()),
-                    }
-                }
-                NodeType::Text => {
-                    if let Some(node_text) = child.text() {
-                        text.push_str(node_text);
-                    }
-                }
-                _ => (),
+        for child in elements_children(node) {
+            let child = child?;
+            match child.tag_name().name() {
+                "group" => result.subgroups.push(Group::parse(child)?),
+                "src" => result.sources.push(parse_source(child)?),
+                "generator" => (), // FIXME: unimplemented
+                _ => return Err(unexpected_tag(child, node).into()),
             }
-        }
-        for item in text.split_ascii_whitespace() {
-            let path = match ProjectPath::SRC.append(item) {
-                Ok(path) => path,
-                Err(err) => return Err(ReadError::BadPath(item.into(), err)),
-            };
-            let Some(ty) = path.extension().and_then(SourceType::for_extension) else {
-                return Err(ReadError::UnknownExtension(item.into()));
-            };
-            result.sources.push(Arc::new(Source { path, ty }));
         }
         Ok(result)
     }

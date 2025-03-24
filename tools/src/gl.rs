@@ -1,5 +1,7 @@
 use crate::emit;
-use crate::xmlparse::{self, element_children, element_children_tag, node_pos, require_attribute};
+use crate::xmlparse::{
+    self, element_children_tag, element_children_unchecked, node_pos, require_attribute,
+};
 use arcstr::ArcStr;
 use khronos_api;
 use roxmltree::{self, Document, Node, NodeType, TextPos};
@@ -209,7 +211,7 @@ fn emit_enums<'a>(
             },
         };
         let ty = type_map.map(ty);
-        for item in element_children(child) {
+        for item in element_children_unchecked(child) {
             match item.tag_name().name() {
                 "enum" => {
                     if let Some(api) = item.attribute("api") {
@@ -396,7 +398,7 @@ impl Function {
     ) -> Result<Vec<Self>, Error> {
         let mut result = Vec::with_capacity(commands.len());
         for child in element_children_tag(node, "commands") {
-            for item in element_children(child) {
+            for item in element_children_unchecked(child) {
                 if item.tag_name().name() != "command" {
                     return Err(xmlparse::unexpected_tag(item, child).into());
                 }

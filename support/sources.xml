@@ -1,52 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sources>
-  gl_shader_data.cpp
-  gl_shader_data.hpp
-  gl_shader.hpp
-  gl.hpp
-  log.hpp
-  main.hpp
-  scene_cube.cpp
-  scene_cube.hpp
-  scene_triangle.cpp
-  scene_triangle.hpp
-  var_def.hpp
-  var.hpp
+
+  <src path="gl_shader_data.cpp"/>
+  <src path="gl_shader_data.hpp"/>
+  <src path="gl_shader.hpp"/>
+  <src path="gl.hpp"/>
+  <src path="log.hpp"/>
+  <src path="main.hpp"/>
+  <src path="scene_cube.cpp"/>
+  <src path="scene_cube.hpp"/>
+  <src path="scene_triangle.cpp"/>
+  <src path="scene_triangle.hpp"/>
+  <src path="var_def.hpp"/>
+  <src path="var.hpp"/>
+
   <group condition="compo">
-    gl_shader_compo.cpp
-    main_windows_compo.cpp
+    <src path="gl_shader_compo.cpp"/>
+    <src path="main_windows_compo.cpp"/>
+    <generator rule="glapi" name="gl-compo">
+      <output path="gl_api_compo.hpp"/>
+      <output path="gl_api_compo.cpp"/>
+    </generator>
+    <generator rule="shaders" name="shaders-compo">
+      <output path="gl_shaders_compo.cpp"/>
+    </generator>
   </group>
+
   <group condition="!compo">
-    gl_debug.cpp
-    gl_debug.hpp
-    gl_shader_full.cpp
-    log_internal.hpp
-    log_standard.cpp
-    log_standard.hpp
-    main.cpp
-    os_file.hpp
-    os_string.cpp
-    os_string.hpp
-    text_buffer.cpp
-    text_buffer.hpp
-    text_unicode.cpp
-    text_unicode.hpp
-    util.hpp
-    var.cpp
+
+    <src path="gl_debug.cpp"/>
+    <src path="gl_debug.hpp"/>
+    <src path="gl_shader_full.cpp"/>
+    <src path="log_internal.hpp"/>
+    <src path="log_standard.cpp"/>
+    <src path="log_standard.hpp"/>
+    <src path="main.cpp"/>
+    <src path="os_file.hpp"/>
+    <src path="os_string.cpp"/>
+    <src path="os_string.hpp"/>
+    <src path="text_buffer.cpp"/>
+    <src path="text_buffer.hpp"/>
+    <src path="text_unicode.cpp"/>
+    <src path="text_unicode.hpp"/>
+    <src path="util.hpp"/>
+    <src path="var.cpp"/>
+
     <group condition="windows">
-      gl_windows.cpp
-      log_windows.cpp
-      os_file_windows.cpp
-      os_windows.cpp
-      os_windows.hpp
-      wide_text_buffer.cpp
-      wide_text_buffer.hpp
+      <src path="gl_windows.cpp"/>
+      <src path="log_windows.cpp"/>
+      <src path="os_file_windows.cpp"/>
+      <src path="os_windows.cpp"/>
+      <src path="os_windows.hpp"/>
+      <src path="wide_text_buffer.cpp"/>
+      <src path="wide_text_buffer.hpp"/>
+      <generator rule="glapi" name="gl-full">
+        <output path="gl_api_full.hpp"/>
+        <output path="gl_api_full.cpp"/>
+      </generator>
      </group>
+
      <group condition="!windows">
-      log_unix.cpp
-      os_file_unix.cpp
-      os_unix.cpp
-      os_unix.hpp
+      <src path="log_unix.cpp"/>
+      <src path="os_file_unix.cpp"/>
+      <src path="os_unix.cpp"/>
+      <src path="os_unix.hpp"/>
     </group>
+
+    <generator rule="shaders" name="shaders-full">
+      <output path="gl_shaders_full.cpp"/>
+    </generator>
+
   </group>
+
 </sources>
