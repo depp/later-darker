@@ -10,16 +10,13 @@ use std::error;
 use std::fmt::{self, Write as _};
 use std::str;
 
-const LINKABLE_VERSION: Version = Version(1, 1);
-const MAX_VERSION: Version = Version(3, 3);
-
 // ============================================================================
 // API spec
 // ============================================================================
 
 /// OpenGL API version.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Version(u8, u8);
+pub struct Version(pub u8, pub u8);
 
 impl Version {
     fn parse(text: &str) -> Option<Self> {
@@ -54,7 +51,7 @@ impl error::Error for APISpecParseError {}
 #[derive(Debug, Clone)]
 pub struct APISpec {
     pub version: Version,
-    pub extensions: Vec<String>,
+    pub extensions: Vec<ArcStr>,
 }
 
 impl str::FromStr for APISpec {
@@ -64,9 +61,9 @@ impl str::FromStr for APISpec {
         let mut parts = s.split_ascii_whitespace();
         let version = parts.next().ok_or(APISpecParseError::Empty)?;
         let version = Version::parse(version).ok_or(APISpecParseError::InvalidVersion)?;
-        let mut extensions = Vec::new();
+        let mut extensions: Vec<ArcStr> = Vec::new();
         for part in parts {
-            extensions.push(part.to_string());
+            extensions.push(part.into());
         }
         Ok(Self {
             version,
@@ -136,6 +133,33 @@ impl error::Error for Error {}
 // Feature & Version Map
 // ============================================================================
 
+/// Parameters for generating a featureset.
+#[derive(Debug)]
+struct FeatureSpec {
+    max_version: Version,
+    linkable_version: Version,
+    extensions: HashMap<ArcStr, CallType>,
+}
+
+impl FeatureSpec {
+    fn from_specs(api: &APISpec, link: &APISpec) -> Self {
+        let mut extensions = HashMap::new();
+        for extension in api.extensions.iter() {
+            extensions.insert(extension.clone(), CallType::Runtime);
+        }
+        for extension in link.extensions.iter() {
+            if let Some(ptr) = extensions.get_mut(extension.as_str()) {
+                *ptr = CallType::Linker;
+            }
+        }
+        FeatureSpec {
+            max_version: api.version,
+            linkable_version: link.version,
+            extensions,
+        }
+    }
+}
+
 /// How OpenGL functions are called.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CallType {
@@ -152,7 +176,7 @@ struct FeatureSet<'a> {
 }
 
 impl<'a> FeatureSet<'a> {
-    fn build(node: Node<'a, 'a>) -> Result<Self, Error> {
+    fn build(node: Node<'a, 'a>, api: &FeatureSpec) -> Result<Self, Error> {
         assert_eq!(node.tag_name().name(), "registry");
         let mut set: FeatureSet<'_> = FeatureSet {
             enums: HashSet::new(),
@@ -160,13 +184,13 @@ impl<'a> FeatureSet<'a> {
         };
         for child in node.children() {
             if child.is_element() && child.tag_name().name() == "feature" {
-                set.parse_feature(child)?;
+                set.parse_feature(child, api)?;
             }
         }
         Ok(set)
     }
 
-    fn parse_feature(&mut self, node: Node<'a, 'a>) -> Result<(), Error> {
+    fn parse_feature(&mut self, node: Node<'a, 'a>, api: &FeatureSpec) -> Result<(), Error> {
         assert_eq!(node.tag_name().name(), "feature");
         if require_attribute(node, "api")? != "gl" {
             return Ok(());
@@ -178,12 +202,13 @@ impl<'a> FeatureSet<'a> {
             }
             Some(version) => version,
         };
-        let availability = if version <= LINKABLE_VERSION {
-            CallType::Linker
-        } else if version <= MAX_VERSION {
-            CallType::Runtime
-        } else {
+        if version > api.max_version {
             return Ok(());
+        }
+        let availability = if version <= api.linkable_version {
+            CallType::Linker
+        } else {
+            CallType::Runtime
         };
         for child in node.children() {
             if child.is_element() {
@@ -520,23 +545,24 @@ pub struct API {
 }
 
 impl API {
-    fn parse(node: Node) -> Result<Self, Error> {
+    fn parse(node: Node, api: &APISpec, link: &APISpec) -> Result<Self, Error> {
         let type_map = TypeMap::create();
         if node.tag_name().name() != "registry" {
             return Err(xmlparse::unexpected_tag(node).into());
         }
-        let features = FeatureSet::build(node)?;
+        let spec = FeatureSpec::from_specs(api, link);
+        let features = FeatureSet::build(node, &spec)?;
         let enums = emit_enums(&features.enums, node, &type_map)?;
         let functions = Function::parse_all(&features.commands, node, &type_map)?;
         Ok(API { enums, functions })
     }
 
     /// Create an OpenGL API.
-    pub fn create() -> Result<Self, Error> {
+    pub fn create(api: &APISpec, link: &APISpec) -> Result<Self, Error> {
         let spec_data = khronos_api::GL_XML;
         let spec_data = str::from_utf8(spec_data).expect("XML registry is not UTF-8.");
         let doc = Document::parse(spec_data)?;
-        Self::parse(doc.root_element())
+        Self::parse(doc.root_element(), api, link)
     }
 
     /// Create bindings for this API.

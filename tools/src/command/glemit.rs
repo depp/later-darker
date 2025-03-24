@@ -23,7 +23,15 @@ pub struct Args {
 
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
-        let api = gl::API::create()?;
+        let api = gl::APISpec {
+            version: gl::Version(3, 3),
+            extensions: vec![],
+        };
+        let link = gl::APISpec {
+            version: gl::Version(1, 1),
+            extensions: vec![],
+        };
+        let api = gl::API::create(&api, &link)?;
         let bindings = match &self.entry_points {
             None => api.make_bindings(),
             Some(path) => {

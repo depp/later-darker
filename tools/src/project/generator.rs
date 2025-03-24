@@ -178,7 +178,7 @@ impl GLAPI {
 
 impl Generator for GLAPI {
     fn run(&self, _: &ProjectRoot) -> Result<Vec<Output>, Box<dyn error::Error>> {
-        let api = gl::API::create()?.make_bindings();
+        let api = gl::API::create(&self.api, &self.link)?.make_bindings();
         Ok(vec![
             Output {
                 path: self.header.clone(),
