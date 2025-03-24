@@ -1,5 +1,6 @@
 use super::paths::{ProjectPath, ProjectRoot};
 use super::sources::Source;
+use crate::error::FileError;
 use crate::gl;
 use crate::project::sources::SourceType;
 use crate::shader;
@@ -141,7 +142,17 @@ impl GLShaders {
 impl Generator for GLShaders {
     fn run(&self, root: &ProjectRoot) -> Result<Vec<Output>, Box<dyn error::Error>> {
         let directory = root.resolve(&ProjectPath::SHADER);
-        let spec = shader::Spec::read_file(&directory.join("shader.txt"))?;
+        let spec_path = directory.join("shaders.txt");
+        let spec = match shader::Spec::read_file(&spec_path) {
+            Ok(value) => value,
+            Err(err) => {
+                return Err(FileError {
+                    path: spec_path,
+                    error: err.into(),
+                }
+                .into());
+            }
+        };
         let manifest = spec.to_manifest();
         let data = shader::Data::read_raw(&manifest, &directory)?;
         let text = data.emit_text()?;

@@ -15,7 +15,7 @@ struct Parameters {
 }
 
 const FULL: Parameters = Parameters {
-    name: "LaterCompoFull",
+    name: "LaterDarkerFull",
     guid: uuid!("26443e89-4e15-4714-8cec-8ce4b3902761"),
 };
 
