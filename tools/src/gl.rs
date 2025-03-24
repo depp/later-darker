@@ -87,6 +87,7 @@ pub enum Error {
     InvalidPrototype(TextPos),
     AliasConflict(String, String),
     UnknownType(String, TextPos),
+    UnknownExtension(String),
     Parse(roxmltree::Error),
     XML(xmlparse::Error),
 }
@@ -121,6 +122,7 @@ impl fmt::Display for Error {
                 name, alias
             ),
             UnknownType(name, pos) => write!(f, "unknown type {:?} at {}", name, pos),
+            UnknownExtension(name) => write!(f, "unknown extension {:?}", name),
             Parse(err) => err.fmt(f),
             XML(err) => err.fmt(f),
         }
@@ -141,22 +143,41 @@ struct FeatureSpec {
     extensions: HashMap<ArcStr, CallType>,
 }
 
+fn all_extensions<'a>(node: Node<'a, '_>) -> Result<HashSet<&'a str>, Error> {
+    assert_eq!(node.tag_name().name(), "registry");
+    let mut extensions: HashSet<&str> = HashSet::new();
+    for child in element_children_tag(node, "extensions") {
+        for item in element_children_tag(child, "extension") {
+            let name = require_attribute(item, "name")?;
+            extensions.insert(name);
+        }
+    }
+    Ok(extensions)
+}
+
 impl FeatureSpec {
-    fn from_specs(api: &APISpec, link: &APISpec) -> Self {
+    fn from_specs(api: &APISpec, link: &APISpec, node: Node) -> Result<Self, Error> {
+        let all_extensions = all_extensions(node)?;
         let mut extensions = HashMap::new();
         for extension in api.extensions.iter() {
+            if !all_extensions.contains(extension.as_str()) {
+                return Err(Error::UnknownExtension(extension.to_string()));
+            }
             extensions.insert(extension.clone(), CallType::Runtime);
         }
         for extension in link.extensions.iter() {
+            if !all_extensions.contains(extension.as_str()) {
+                return Err(Error::UnknownExtension(extension.to_string()));
+            }
             if let Some(ptr) = extensions.get_mut(extension.as_str()) {
                 *ptr = CallType::Linker;
             }
         }
-        FeatureSpec {
+        Ok(FeatureSpec {
             max_version: api.version,
             linkable_version: link.version,
             extensions,
-        }
+        })
     }
 }
 
@@ -550,7 +571,7 @@ impl API {
         if node.tag_name().name() != "registry" {
             return Err(xmlparse::unexpected_tag(node).into());
         }
-        let spec = FeatureSpec::from_specs(api, link);
+        let spec = FeatureSpec::from_specs(api, link, node)?;
         let features = FeatureSet::build(node, &spec)?;
         let enums = emit_enums(&features.enums, node, &type_map)?;
         let functions = Function::parse_all(&features.commands, node, &type_map)?;
