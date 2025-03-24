@@ -59,7 +59,7 @@
       <src path="wide_text_buffer.hpp"/>
       <generator rule="gl:api" name="full">
         <properties>
-          <api>3.3 KHR_debug</api>
+          <api>3.3 GL_KHR_debug</api>
           <link>1.1</link>
         </properties>
         <output path="gl_api_full.hpp"/>

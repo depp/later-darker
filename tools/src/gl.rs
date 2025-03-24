@@ -203,9 +203,15 @@ impl<'a> FeatureSet<'a> {
             enums: HashSet::new(),
             commands: HashMap::new(),
         };
-        for child in node.children() {
-            if child.is_element() && child.tag_name().name() == "feature" {
-                set.parse_feature(child, api)?;
+        for child in element_children_unchecked(node) {
+            match child.tag_name().name() {
+                "feature" => set.parse_feature(child, api)?,
+                "extensions" => {
+                    for item in element_children_tag(child, "extension") {
+                        set.parse_extension(item, api)?;
+                    }
+                }
+                _ => (),
             }
         }
         Ok(set)
@@ -240,6 +246,20 @@ impl<'a> FeatureSet<'a> {
                 }
             }
         }
+        Ok(())
+    }
+
+    fn parse_extension(&mut self, node: Node<'a, 'a>, api: &FeatureSpec) -> Result<(), Error> {
+        assert_eq!(node.tag_name().name(), "extension");
+        let name = require_attribute(node, "name")?;
+        if let Some(&call_type) = api.extensions.get(name) {
+            for child in element_children_unchecked(node) {
+                match child.tag_name().name() {
+                    "require" => self.parse_require(child, call_type)?,
+                    _ => return Err(xmlparse::unexpected_tag(child).into()),
+                }
+            }
+        };
         Ok(())
     }
 
