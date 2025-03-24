@@ -43,12 +43,6 @@ impl PropertyMap {
         self.0.insert(name.into(), Some(value.into()));
     }
 
-    /// Delete a property value.
-    #[allow(dead_code)]
-    pub fn delete(&mut self, name: impl Into<ArcStr>) {
-        self.0.insert(name.into(), None);
-    }
-
     /// Inherit values from another property map.
     fn inherit(&mut self, other: &Self) {
         for (k, v) in other.0.iter() {

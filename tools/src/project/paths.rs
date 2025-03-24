@@ -24,10 +24,6 @@ impl error::Error for NoProjectDirectory {}
 /// Error that indicates a path is invalid.
 #[derive(Debug)]
 pub enum PathError {
-    #[allow(dead_code)]
-    LeadingSlash,
-    #[allow(dead_code)]
-    TrailingSlash,
     EmptyComponent,
     InvalidComponent(&'static str),
     InvalidCharacter(char),
@@ -37,8 +33,6 @@ pub enum PathError {
 impl fmt::Display for PathError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            PathError::LeadingSlash => f.write_str("path has leading slash"),
-            PathError::TrailingSlash => f.write_str("path has trailing slash"),
             PathError::EmptyComponent => f.write_str("path has empty component"),
             PathError::InvalidComponent(name) => {
                 write!(f, "path contains invalid component: {:?}", name)
@@ -185,30 +179,11 @@ fn validate_component(component: &str) -> Result<(), PathError> {
     Ok(())
 }
 
-/// Validate that a path is safe to use in a project.
-#[allow(dead_code)]
-fn validate_path(path: &str) -> Result<(), PathError> {
-    if path.starts_with("/") {
-        return Err(PathError::LeadingSlash);
-    }
-    if path.ends_with("/") {
-        return Err(PathError::LeadingSlash);
-    }
-    for component in path.split('/') {
-        validate_component(component)?;
-    }
-    Ok(())
-}
-
 /// A path to a file or directory within the project. Paths are validated.
 #[derive(Debug, Clone)]
 pub struct ProjectPath(ArcStr);
 
 impl ProjectPath {
-    /// The top-level project directory.
-    #[allow(dead_code)]
-    pub const ROOT: Self = ProjectPath(literal!("."));
-
     /// The src directory.
     pub const SRC: Self = ProjectPath(literal!("src"));
 
@@ -231,17 +206,6 @@ impl ProjectPath {
             data.push_str(name);
             ArcStr::from(data)
         }))
-    }
-
-    /// Construct a new path.
-    #[allow(dead_code)]
-    pub fn new(&self, name: &str) -> Result<Self, PathError> {
-        Ok(if name == "." {
-            ProjectPath::ROOT
-        } else {
-            validate_path(name)?;
-            Self(ArcStr::from(name))
-        })
     }
 
     /// Get the path as a string.
