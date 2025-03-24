@@ -3,6 +3,7 @@ use crate::project::paths;
 use crate::project::sources;
 use clap::Parser;
 use std::error::Error;
+use std::fmt::Write as _;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
@@ -20,14 +21,14 @@ pub struct Args {
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
         let project_directory = paths::ProjectRoot::find_or(self.project_directory.as_deref())?;
-        let source_list = sources::SourceList::read_project(&project_directory)?;
+        let source_list = sources::SourceSpec::read_project(&project_directory)?;
         let sources = match &self.config {
             None => source_list.all_sources(),
             Some(config) => {
                 let sources = source_list.sources_for_config(&config)?;
                 eprintln!(
                     "Config: {} / {} sources",
-                    sources.len(),
+                    sources.sources().len(),
                     source_list.count()
                 );
                 sources
@@ -35,9 +36,22 @@ impl Args {
         };
 
         let mut out = String::new();
-        for src in sources.iter() {
-            out.push_str(src.path().as_str());
+        for src in sources.sources().iter() {
+            writeln!(out, "src: {}", src.path().as_str()).unwrap();
+        }
+        for generator in sources.generators().iter() {
             out.push('\n');
+            writeln!(
+                out,
+                "generator: {:?} {:?}",
+                generator.name(),
+                generator.rule()
+            )
+            .unwrap();
+            for output in generator.outputs() {
+                writeln!(out, "  output: {}", output.path().as_str()).unwrap();
+            }
+            writeln!(out, "  {:?}", generator.implementation()).unwrap();
         }
         io::stdout().write(out.as_bytes())?;
         Ok(())

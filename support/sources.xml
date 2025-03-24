@@ -17,11 +17,11 @@
   <group condition="compo">
     <src path="gl_shader_compo.cpp"/>
     <src path="main_windows_compo.cpp"/>
-    <generator rule="glapi" name="gl-compo">
+    <generator rule="gl:api" name="compo">
       <output path="gl_api_compo.hpp"/>
       <output path="gl_api_compo.cpp"/>
     </generator>
-    <generator rule="shaders" name="shaders-compo">
+    <generator rule="gl:shaders" name="compo">
       <output path="gl_shaders_compo.cpp"/>
     </generator>
   </group>
@@ -53,7 +53,7 @@
       <src path="os_windows.hpp"/>
       <src path="wide_text_buffer.cpp"/>
       <src path="wide_text_buffer.hpp"/>
-      <generator rule="glapi" name="gl-full">
+      <generator rule="gl:api" name="full">
         <output path="gl_api_full.hpp"/>
         <output path="gl_api_full.cpp"/>
       </generator>
@@ -66,7 +66,7 @@
       <src path="os_unix.hpp"/>
     </group>
 
-    <generator rule="shaders" name="shaders-full">
+    <generator rule="gl:shaders" name="full">
       <output path="gl_shaders_full.cpp"/>
     </generator>
 

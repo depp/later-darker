@@ -1,10 +1,11 @@
 use super::condition::{self, Condition, EvalError};
-use super::config;
 use super::paths::{self, ProjectPath, ProjectRoot};
+use super::{config, generator};
 use crate::xmlparse::{
-    self, attr_pos, elements_children, missing_attribute, unexpected_attribute, unexpected_root,
-    unexpected_tag,
+    self, attr_pos, elements_children, missing_attribute, node_pos, unexpected_attribute,
+    unexpected_root, unexpected_tag,
 };
+use arcstr::ArcStr;
 use roxmltree::{Node, TextPos};
 use std::error;
 use std::fmt;
@@ -28,13 +29,6 @@ pub enum SourceType {
 }
 
 impl SourceType {
-    fn extension(&self) -> &'static str {
-        match self {
-            SourceType::Source => SOURCE_EXTENSION,
-            SourceType::Header => HEADER_EXTENSION,
-        }
-    }
-
     fn for_extension(ext: &str) -> Option<Self> {
         Some(match ext {
             SOURCE_EXTENSION => SourceType::Source,
@@ -56,13 +50,6 @@ pub struct Source {
 }
 
 impl Source {
-    /// Create a new generated source file.
-    pub fn new_generated(name: &str, ty: SourceType) -> Result<Arc<Self>, paths::PathError> {
-        let full_name = [name, ty.extension()].join(".");
-        let path = paths::ProjectPath::GENERATED.append(&full_name)?;
-        Ok(Arc::new(Source { ty, path }))
-    }
-
     /// Get the source type.
     pub fn ty(&self) -> SourceType {
         self.ty
@@ -71,6 +58,79 @@ impl Source {
     /// Get the Unix-style, relative path for this source.
     pub fn path(&self) -> &ProjectPath {
         &self.path
+    }
+}
+
+// ============================================================================
+// Generators
+// ============================================================================
+
+/// A source code generator.
+#[derive(Debug)]
+pub struct Generator {
+    rule: ArcStr,
+    name: ArcStr,
+    outputs: Vec<Arc<Source>>,
+    implementation: Box<dyn generator::Generator>,
+}
+
+impl Generator {
+    /// Get the name rule that the generator uses for generating outputs.
+    pub fn rule(&self) -> &ArcStr {
+        &self.rule
+    }
+
+    /// Get the name identifying this generator in the spec. This should be
+    /// unique among shaders with the same rule.
+    pub fn name(&self) -> &ArcStr {
+        &self.name
+    }
+
+    /// Get all outputs for this generator.
+    pub fn outputs(&self) -> &[Arc<Source>] {
+        &self.outputs
+    }
+
+    /// Get the underlying generator implementation.
+    pub fn implementation(&self) -> &dyn generator::Generator {
+        self.implementation.as_ref()
+    }
+}
+
+// ============================================================================
+// Source List
+// ============================================================================
+
+/// A resolved list of sources and generators for a particular build.
+#[derive(Debug)]
+pub struct SourceList {
+    sources: Vec<Arc<Source>>,
+    generators: Vec<Arc<Generator>>,
+}
+
+impl SourceList {
+    fn new() -> Self {
+        Self {
+            sources: Vec::new(),
+            generators: Vec::new(),
+        }
+    }
+
+    fn sort(&mut self) {
+        self.sources
+            .sort_by(|x, y| x.path.as_str().cmp(y.path.as_str()));
+        self.generators
+            .sort_by(|x, y| x.name.as_str().cmp(y.name.as_str()));
+    }
+
+    /// Get all sources in the build.
+    pub fn sources(&self) -> &[Arc<Source>] {
+        &self.sources
+    }
+
+    /// Get all source generators in the build.
+    pub fn generators(&self) -> &[Arc<Generator>] {
+        &self.generators
     }
 }
 
@@ -97,6 +157,10 @@ pub enum ReadError {
     IO(io::Error),
     XML(xmlparse::Error),
     Parse(roxmltree::Error),
+    Generator {
+        err: generator::EvaluationError,
+        pos: TextPos,
+    },
 }
 
 impl From<io::Error> for ReadError {
@@ -132,6 +196,7 @@ impl fmt::Display for ReadError {
             ReadError::IO(e) => write!(f, "failed to read: {}", e),
             ReadError::XML(err) => err.fmt(f),
             ReadError::Parse(err) => err.fmt(f),
+            ReadError::Generator { err, pos } => write!(f, "invalid generator at {}: {}", pos, err),
         }
     }
 }
@@ -139,25 +204,21 @@ impl fmt::Display for ReadError {
 impl error::Error for ReadError {}
 
 // ============================================================================
-// Source List
+// Source Spec
 // ============================================================================
 
-/// A list of source files.
+/// A specification for which sources are included in each build. This directly
+/// corresponds to the sources.xml file.
 #[derive(Debug)]
-pub struct SourceList {
+pub struct SourceSpec {
     group: Group,
 }
 
-/// Sort a list of sources lexicographically.
-fn sort_sources(sources: &mut [Arc<Source>]) {
-    sources.sort_by(|x, y| x.path.as_str().cmp(y.path.as_str()));
-}
-
-impl SourceList {
+impl SourceSpec {
     /// Read the main project source list.
     pub fn read_project(root: &ProjectRoot) -> Result<Self, ReadError> {
         let path = root.resolve_str("support/sources.xml");
-        SourceList::read(&path)
+        SourceSpec::read(&path)
     }
 
     /// Read a source list from a file.
@@ -168,27 +229,24 @@ impl SourceList {
         if root.tag_name().name() != "sources" {
             return Err(unexpected_root(root).into());
         }
-        Ok(SourceList {
+        Ok(SourceSpec {
             group: Group::parse(root)?,
         })
     }
 
     /// Return the sources that are included in a specific build configuration.
-    pub fn sources_for_config(
-        &self,
-        config: &config::Config,
-    ) -> Result<Vec<Arc<Source>>, EvalError> {
-        let mut sources = Vec::new();
+    pub fn sources_for_config(&self, config: &config::Config) -> Result<SourceList, EvalError> {
+        let mut sources = SourceList::new();
         self.group.append_sources_config(&mut sources, config)?;
-        sort_sources(&mut sources);
+        sources.sort();
         Ok(sources)
     }
 
     /// Return all sources.
-    pub fn all_sources(&self) -> Vec<Arc<Source>> {
-        let mut sources = Vec::new();
+    pub fn all_sources(&self) -> SourceList {
+        let mut sources = SourceList::new();
         self.group.append_sources(&mut sources);
-        sort_sources(&mut sources);
+        sources.sort();
         sources
     }
 
@@ -203,7 +261,30 @@ impl SourceList {
 struct Group {
     condition: Option<Condition>,
     sources: Vec<Arc<Source>>,
+    generators: Vec<Arc<Generator>>,
     subgroups: Vec<Group>,
+}
+
+/// Parse a path attribute.
+fn parse_path(
+    directory: &ProjectPath,
+    node: Node,
+    attr: roxmltree::Attribute,
+) -> Result<(SourceType, ProjectPath), ReadError> {
+    match directory.append(attr.value()) {
+        Ok(path) => match path.extension().and_then(SourceType::for_extension) {
+            None => Err(ReadError::UnknownExtension {
+                path: attr.value().to_string(),
+                pos: attr_pos(node, attr),
+            }),
+            Some(ty) => Ok((ty, path)),
+        },
+        Err(err) => Err(ReadError::BadPath {
+            path: attr.value().into(),
+            err,
+            pos: attr_pos(node, attr),
+        }),
+    }
 }
 
 /// Parse a <src> tag.
@@ -211,24 +292,7 @@ fn parse_source(node: Node) -> Result<Arc<Source>, ReadError> {
     let mut type_path: Option<(SourceType, ProjectPath)> = None;
     for attr in node.attributes() {
         match attr.name() {
-            "path" => match ProjectPath::SRC.append(attr.value()) {
-                Ok(path) => {
-                    let Some(ty) = path.extension().and_then(SourceType::for_extension) else {
-                        return Err(ReadError::UnknownExtension {
-                            path: attr.value().to_string(),
-                            pos: attr_pos(node, attr),
-                        });
-                    };
-                    type_path = Some((ty, path));
-                }
-                Err(err) => {
-                    return Err(ReadError::BadPath {
-                        path: attr.value().into(),
-                        err,
-                        pos: attr_pos(node, attr),
-                    });
-                }
-            },
+            "path" => type_path = Some(parse_path(&ProjectPath::SRC, node, attr)?),
             _ => return Err(unexpected_attribute(node, attr).into()),
         }
     }
@@ -238,12 +302,70 @@ fn parse_source(node: Node) -> Result<Arc<Source>, ReadError> {
     Ok(Arc::new(Source { ty, path }))
 }
 
+/// Parse an <output> tag.
+fn parse_output(node: Node) -> Result<Arc<Source>, ReadError> {
+    let mut type_path: Option<(SourceType, ProjectPath)> = None;
+    for attr in node.attributes() {
+        match attr.name() {
+            "path" => type_path = Some(parse_path(&ProjectPath::GENERATED, node, attr)?),
+            _ => return Err(unexpected_attribute(node, attr).into()),
+        }
+    }
+    let Some((ty, path)) = type_path else {
+        return Err(missing_attribute(node, "path").into());
+    };
+    Ok(Arc::new(Source { ty, path }))
+}
+
+/// Parse a <generator> tag.
+fn parse_generator(node: Node) -> Result<Arc<Generator>, ReadError> {
+    let mut rule: Option<&str> = None;
+    let mut name: Option<&str> = None;
+    for attr in node.attributes() {
+        match attr.name() {
+            "rule" => rule = Some(attr.value()),
+            "name" => name = Some(attr.value()),
+            _ => return Err(unexpected_attribute(node, attr).into()),
+        }
+    }
+    let Some(rule) = rule else {
+        return Err(missing_attribute(node, "rule").into());
+    };
+    let Some(name) = name else {
+        return Err(missing_attribute(node, "name").into());
+    };
+    let mut outputs: Vec<Arc<Source>> = Vec::new();
+    for child in elements_children(node) {
+        let child = child?;
+        match child.tag_name().name() {
+            "output" => outputs.push(parse_output(child)?),
+            _ => return Err(unexpected_tag(child, node).into()),
+        }
+    }
+    let implementation = match generator::evaluate(rule, &outputs) {
+        Ok(value) => value,
+        Err(err) => {
+            return Err(ReadError::Generator {
+                err,
+                pos: node_pos(node),
+            });
+        }
+    };
+    Ok(Arc::new(Generator {
+        rule: rule.into(),
+        name: name.into(),
+        outputs,
+        implementation,
+    }))
+}
+
 impl Group {
     /// Parse a group in an XML document.
     fn parse(node: Node) -> Result<Self, ReadError> {
         let mut result = Group {
             condition: None,
             sources: Vec::new(),
+            generators: Vec::new(),
             subgroups: Vec::new(),
         };
         for attr in node.attributes() {
@@ -265,15 +387,24 @@ impl Group {
             match child.tag_name().name() {
                 "group" => result.subgroups.push(Group::parse(child)?),
                 "src" => result.sources.push(parse_source(child)?),
-                "generator" => (), // FIXME: unimplemented
+                "generator" => {
+                    let generator = parse_generator(child)?;
+                    result.sources.extend_from_slice(&generator.outputs);
+                    result.generators.push(generator);
+                }
                 _ => return Err(unexpected_tag(child, node).into()),
             }
         }
         Ok(result)
     }
 
-    fn append_sources(&self, out: &mut Vec<Arc<Source>>) {
-        out.extend_from_slice(&self.sources);
+    fn append_self(&self, out: &mut SourceList) {
+        out.sources.extend_from_slice(&self.sources);
+        out.generators.extend_from_slice(&self.generators);
+    }
+
+    fn append_sources(&self, out: &mut SourceList) {
+        self.append_self(out);
         for group in self.subgroups.iter() {
             group.append_sources(out);
         }
@@ -281,7 +412,7 @@ impl Group {
 
     fn append_sources_config(
         &self,
-        out: &mut Vec<Arc<Source>>,
+        out: &mut SourceList,
         config: &config::Config,
     ) -> Result<(), EvalError> {
         if let Some(condition) = &self.condition {
@@ -289,7 +420,7 @@ impl Group {
                 return Ok(());
             }
         }
-        out.extend_from_slice(&self.sources);
+        self.append_self(out);
         for group in self.subgroups.iter() {
             group.append_sources_config(out, config)?;
         }
