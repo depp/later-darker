@@ -719,9 +719,7 @@ fn emit_header(enums: &str, functions: &Functions) -> String {
     let mut out = String::new();
     out.push_str(emit::HEADER);
     out.push_str(
-        "#define GLAPI __stdcall\n\
-        #define GLIMPORT __declspec(dllimport)\n\
-        namespace demo {\n\
+        "namespace demo {\n\
         namespace gl_api {\n",
     );
     writeln!(
@@ -820,4 +818,5 @@ const TYPE_MAP: &[(&str, &str)] = &[
     ("GLsizeiptr", "long long"),
     ("GLint64", "long long"),
     ("GLuint64", "unsigned long long"),
+    ("GLDEBUGPROCKHR", "GLDEBUGPROC"),
 ];

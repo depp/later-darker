@@ -25,12 +25,18 @@
 // Windows
 // ============================================================================
 
+#define GLAPI __stdcall
+#define GLIMPORT __declspec(dllimport)
+
 struct __GLsync;
 
 using GLenum = unsigned;
 using GLuint = unsigned;
 using GLint = int;
 using GLsync = __GLsync *;
+using GLDEBUGPROC = void(GLAPI *)(GLenum source, GLenum type, unsigned id,
+                                  GLenum severity, int length,
+                                  const char *message, const void *userParam);
 
 #if COMPO
 
