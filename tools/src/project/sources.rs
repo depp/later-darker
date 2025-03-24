@@ -3,8 +3,8 @@ use super::paths::{self, ProjectPath, ProjectRoot};
 use super::{config, generator};
 use crate::emit;
 use crate::xmlparse::{
-    self, attr_pos, elements_children, missing_attribute, node_pos, unexpected_attribute,
-    unexpected_tag,
+    self, attr_pos, check_no_attributes, elements_children, missing_attribute, node_pos,
+    parse_text_contents, unexpected_attribute, unexpected_tag,
 };
 use arcstr::ArcStr;
 use roxmltree::{Node, TextPos};
@@ -24,7 +24,7 @@ const SOURCE_EXTENSION: &str = "cpp";
 const HEADER_EXTENSION: &str = "hpp";
 
 /// A type of source file.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SourceType {
     Source,
     Header,
@@ -235,6 +235,10 @@ pub enum ReadError {
         err: generator::EvaluationError,
         pos: TextPos,
     },
+    DuplicateProperty {
+        name: String,
+        pos: TextPos,
+    },
 }
 
 impl From<io::Error> for ReadError {
@@ -271,6 +275,9 @@ impl fmt::Display for ReadError {
             ReadError::XML(err) => err.fmt(f),
             ReadError::Parse(err) => err.fmt(f),
             ReadError::Generator { err, pos } => write!(f, "invalid generator at {}: {}", pos, err),
+            ReadError::DuplicateProperty { name, pos } => {
+                write!(f, "duplicate property {:?} at {}", name, pos)
+            }
         }
     }
 }
@@ -409,14 +416,31 @@ fn parse_generator(node: Node) -> Result<Arc<Generator>, ReadError> {
         return Err(missing_attribute(node, "name").into());
     };
     let mut outputs: Vec<Arc<Source>> = Vec::new();
+    let mut properties: Vec<(String, String)> = Vec::new();
     for child in elements_children(node) {
         let child = child?;
         match child.tag_name().name() {
             "output" => outputs.push(parse_output(child)?),
+            "properties" => {
+                check_no_attributes(child)?;
+                for item in elements_children(child) {
+                    let item = item?;
+                    let name = item.tag_name().name();
+                    if properties.iter().any(|(prop_name, _)| prop_name == name) {
+                        return Err(ReadError::DuplicateProperty {
+                            name: name.into(),
+                            pos: node_pos(item),
+                        });
+                    }
+                    check_no_attributes(item)?;
+                    let value = parse_text_contents(item)?;
+                    properties.push((name.to_string(), value));
+                }
+            }
             _ => return Err(unexpected_tag(child).into()),
         }
     }
-    let implementation = match generator::evaluate(rule, &outputs) {
+    let implementation = match generator::evaluate(rule, &outputs, properties) {
         Ok(value) => value,
         Err(err) => {
             return Err(ReadError::Generator {

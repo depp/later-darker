@@ -113,6 +113,14 @@ pub fn unexpected_attribute(node: Node, attr: Attribute) -> Error {
     }
 }
 
+/// Check that the node has no attributes.
+pub fn check_no_attributes(node: Node) -> Result<(), Error> {
+    match node.attributes().next() {
+        None => Ok(()),
+        Some(attr) => Err(unexpected_attribute(node, attr)),
+    }
+}
+
 /// Create an error for a missing required attribute.
 pub fn missing_attribute(node: Node, name: &str) -> Error {
     Error::MissingAttribute {

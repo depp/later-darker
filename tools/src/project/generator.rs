@@ -6,6 +6,7 @@ use crate::project::sources::SourceType;
 use crate::shader;
 use std::error;
 use std::fmt;
+use std::str::FromStr;
 use std::sync::Arc;
 
 // ============================================================================
@@ -16,14 +17,23 @@ use std::sync::Arc;
 #[derive(Debug)]
 pub enum EvaluationError {
     UnknownRule(String),
-    BadOutputs,
+    UnexpectedOutput(ProjectPath),
+    MissingOutput(SourceType),
+    UnknownProperty(String),
+    MissingProperty(String),
+    PropertyValue(String, Box<dyn error::Error>),
 }
 
 impl fmt::Display for EvaluationError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use EvaluationError::*;
         match self {
-            EvaluationError::UnknownRule(name) => write!(f, "unknown generator rule: {:?}", name),
-            EvaluationError::BadOutputs => write!(f, "invalid outputs for this rule"),
+            UnknownRule(name) => write!(f, "unknown generator rule: {:?}", name),
+            UnexpectedOutput(path) => write!(f, "unexpected output: {}", path),
+            MissingOutput(ty) => write!(f, "missing required output with type {:?}", ty),
+            UnknownProperty(name) => write!(f, "unknown property: {:?}", name),
+            MissingProperty(name) => write!(f, "missing required property: {:?}", name),
+            PropertyValue(name, err) => write!(f, "invalid value for {:?} property: {}", name, err),
         }
     }
 }
@@ -31,7 +41,7 @@ impl fmt::Display for EvaluationError {
 impl error::Error for EvaluationError {}
 
 // ============================================================================
-// Errors
+// Generator Interface
 // ============================================================================
 
 /// An individual output from a generator.
@@ -49,11 +59,91 @@ pub trait Generator: fmt::Debug {
 pub fn evaluate(
     rule: &str,
     outputs: &[Arc<Source>],
+    properties: Vec<(String, String)>,
 ) -> Result<Box<dyn Generator>, EvaluationError> {
+    let parameters = Parameters {
+        outputs: outputs.into(),
+        properties,
+    };
     match rule {
-        "gl:api" => Ok(Box::new(GLAPI::evaluate(outputs)?)),
-        "gl:shaders" => Ok(Box::new(GLShaders::evaluate(outputs)?)),
+        "gl:api" => Ok(Box::new(GLAPI::evaluate(parameters)?)),
+        "gl:shaders" => Ok(Box::new(GLShaders::evaluate(parameters)?)),
         _ => Err(EvaluationError::UnknownRule(rule.to_string())),
+    }
+}
+
+struct Parameters {
+    outputs: Vec<Arc<Source>>,
+    properties: Vec<(String, String)>,
+}
+
+impl Parameters {
+    /// Get a property from the parameters, removing it.
+    fn property(&mut self, name: &'static str) -> Property<String> {
+        Property {
+            name,
+            value: self
+                .properties
+                .iter()
+                .position(|(prop_name, _)| prop_name == name)
+                .map(|index| self.properties.swap_remove(index).1),
+        }
+    }
+
+    /// Finish parsing, reporting any unknown properties or inputs.
+    fn done(self) -> Result<(), EvaluationError> {
+        if let Some((name, _)) = self.properties.into_iter().next() {
+            return Err(EvaluationError::UnknownProperty(name));
+        }
+        if let Some(output) = self.outputs.into_iter().next() {
+            return Err(EvaluationError::UnexpectedOutput(output.path().clone()));
+        }
+        Ok(())
+    }
+
+    /// Get the singular output of the given type.
+    fn output(&mut self, ty: SourceType) -> Result<ProjectPath, EvaluationError> {
+        match self.outputs.iter().position(|src| src.ty() == ty) {
+            None => Err(EvaluationError::MissingOutput(ty)),
+            Some(index) => Ok(self.outputs.swap_remove(index).path().clone()),
+        }
+    }
+}
+
+struct Property<T> {
+    name: &'static str,
+    value: Option<T>,
+}
+
+impl Property<String> {
+    fn parse<T: FromStr>(self) -> Result<Property<T>, EvaluationError>
+    where
+        <T as FromStr>::Err: 'static + error::Error,
+    {
+        Ok(Property {
+            name: self.name,
+            value: match self.value {
+                None => None,
+                Some(value) => match T::from_str(&value) {
+                    Ok(value) => Some(value),
+                    Err(err) => {
+                        return Err(EvaluationError::PropertyValue(
+                            self.name.to_string(),
+                            err.into(),
+                        ));
+                    }
+                },
+            },
+        })
+    }
+}
+
+impl<T> Property<T> {
+    fn required(self) -> Result<T, EvaluationError> {
+        match self.value {
+            None => Err(EvaluationError::MissingProperty(self.name.to_string())),
+            Some(value) => Ok(value),
+        }
     }
 }
 
@@ -64,33 +154,25 @@ pub fn evaluate(
 /// OpenGL API binding generator.
 #[derive(Debug)]
 struct GLAPI {
+    api: gl::APISpec,
+    link: gl::APISpec,
     source: ProjectPath,
     header: ProjectPath,
 }
 
 impl GLAPI {
-    fn evaluate(outputs: &[Arc<Source>]) -> Result<Self, EvaluationError> {
-        let mut source = None;
-        let mut header = None;
-        for output in outputs.iter() {
-            match output.ty() {
-                SourceType::Source => {
-                    if source.is_some() {
-                        return Err(EvaluationError::BadOutputs);
-                    }
-                    source = Some(output.path().clone());
-                }
-                SourceType::Header => {
-                    if header.is_some() {
-                        return Err(EvaluationError::BadOutputs);
-                    }
-                    header = Some(output.path().clone());
-                }
-            }
-        }
-        let source = source.ok_or(EvaluationError::BadOutputs)?;
-        let header = header.ok_or(EvaluationError::BadOutputs)?;
-        Ok(Self { source, header })
+    fn evaluate(mut params: Parameters) -> Result<Self, EvaluationError> {
+        let api: gl::APISpec = params.property("api").parse()?.required()?;
+        let link: gl::APISpec = params.property("link").parse()?.required()?;
+        let source = params.output(SourceType::Source)?;
+        let header = params.output(SourceType::Header)?;
+        params.done()?;
+        Ok(Self {
+            api,
+            link,
+            source,
+            header,
+        })
     }
 }
 
@@ -121,20 +203,9 @@ struct GLShaders {
 }
 
 impl GLShaders {
-    fn evaluate(outputs: &[Arc<Source>]) -> Result<Self, EvaluationError> {
-        let mut source = None;
-        for output in outputs.iter() {
-            match output.ty() {
-                SourceType::Source => {
-                    if source.is_some() {
-                        return Err(EvaluationError::BadOutputs);
-                    }
-                    source = Some(output.path().clone());
-                }
-                _ => return Err(EvaluationError::BadOutputs),
-            }
-        }
-        let source = source.ok_or(EvaluationError::BadOutputs)?;
+    fn evaluate(mut params: Parameters) -> Result<Self, EvaluationError> {
+        let source = params.output(SourceType::Source)?;
+        params.done()?;
         Ok(Self { source })
     }
 }

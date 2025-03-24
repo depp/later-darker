@@ -13,6 +13,72 @@ use std::str;
 const LINKABLE_VERSION: Version = Version(1, 1);
 const MAX_VERSION: Version = Version(3, 3);
 
+// ============================================================================
+// API spec
+// ============================================================================
+
+/// OpenGL API version.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Version(u8, u8);
+
+impl Version {
+    fn parse(text: &str) -> Option<Self> {
+        let (major, minor) = text.split_once('.')?;
+        let major = u8::from_str_radix(major, 10).ok()?;
+        let minor = u8::from_str_radix(minor, 10).ok()?;
+        Some(Version(major, minor))
+    }
+}
+
+/// Error parsing an OpenGL API specification.
+#[derive(Debug)]
+pub enum APISpecParseError {
+    InvalidVersion,
+    Empty,
+}
+
+impl fmt::Display for APISpecParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use APISpecParseError::*;
+        match self {
+            InvalidVersion => f.write_str("invalid version"),
+            Empty => f.write_str("empty spec"),
+        }
+    }
+}
+
+impl error::Error for APISpecParseError {}
+
+/// Specification for a subset of the OpenGL API. Specifies which version and
+/// extensions are included.
+#[derive(Debug, Clone)]
+pub struct APISpec {
+    pub version: Version,
+    pub extensions: Vec<String>,
+}
+
+impl str::FromStr for APISpec {
+    type Err = APISpecParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut parts = s.split_ascii_whitespace();
+        let version = parts.next().ok_or(APISpecParseError::Empty)?;
+        let version = Version::parse(version).ok_or(APISpecParseError::InvalidVersion)?;
+        let mut extensions = Vec::new();
+        for part in parts {
+            extensions.push(part.to_string());
+        }
+        Ok(Self {
+            version,
+            extensions,
+        })
+    }
+}
+
+// ============================================================================
+// Error
+// ============================================================================
+
 /// An error genrating the OpenGL API.
 #[derive(Debug)]
 pub enum Error {
@@ -69,18 +135,6 @@ impl error::Error for Error {}
 // ============================================================================
 // Feature & Version Map
 // ============================================================================
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct Version(u8, u8);
-
-impl Version {
-    fn parse(text: &str) -> Option<Self> {
-        let (major, minor) = text.split_once('.')?;
-        let major = u8::from_str_radix(major, 10).ok()?;
-        let minor = u8::from_str_radix(minor, 10).ok()?;
-        Some(Version(major, minor))
-    }
-}
 
 /// How OpenGL functions are called.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -18,6 +18,10 @@
     <src path="gl_shader_compo.cpp"/>
     <src path="main_windows_compo.cpp"/>
     <generator rule="gl:api" name="compo">
+      <properties>
+        <api>3.3</api>
+        <link>1.1</link>
+      </properties>
       <output path="gl_api_compo.hpp"/>
       <output path="gl_api_compo.cpp"/>
     </generator>
@@ -54,6 +58,10 @@
       <src path="wide_text_buffer.cpp"/>
       <src path="wide_text_buffer.hpp"/>
       <generator rule="gl:api" name="full">
+        <properties>
+          <api>3.3 KHR_debug</api>
+          <link>1.1</link>
+        </properties>
         <output path="gl_api_full.hpp"/>
         <output path="gl_api_full.cpp"/>
       </generator>
