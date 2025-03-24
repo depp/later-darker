@@ -13,7 +13,7 @@ const MAX_VERSION: Version = Version(3, 3);
 
 /// An error genrating the OpenGL API.
 #[derive(Debug)]
-pub enum GenError {
+pub enum Error {
     MissingCommandProto(TextPos),
     MissingCommandName(TextPos),
     InvalidVersion(String, TextPos),
@@ -22,17 +22,25 @@ pub enum GenError {
     InvalidPrototype(TextPos),
     AliasConflict(String, String),
     UnknownType(String, TextPos),
+    Parse(roxmltree::Error),
+    XML(xmlparse::Error),
 }
 
-impl GenError {
-    fn err(self) -> Error {
-        Error::Other(self)
+impl From<roxmltree::Error> for Error {
+    fn from(value: roxmltree::Error) -> Self {
+        Error::Parse(value)
     }
 }
 
-impl fmt::Display for GenError {
+impl From<xmlparse::Error> for Error {
+    fn from(value: xmlparse::Error) -> Self {
+        Error::XML(value)
+    }
+}
+
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use GenError::*;
+        use Error::*;
         match self {
             MissingCommandProto(pos) => write!(f, "missing command <proto> at {}", pos),
             MissingCommandName(pos) => write!(f, "missing command <name> at {}", pos),
@@ -48,14 +56,13 @@ impl fmt::Display for GenError {
                 name, alias
             ),
             UnknownType(name, pos) => write!(f, "unknown type {:?} at {}", name, pos),
+            Parse(err) => err.fmt(f),
+            XML(err) => err.fmt(f),
         }
     }
 }
 
-impl error::Error for GenError {}
-
-/// An error generating an OpenGL API.
-type Error = xmlparse::Error<GenError>;
+impl error::Error for Error {}
 
 // ============================================================================
 // Feature & Version Map
@@ -111,7 +118,7 @@ impl<'a> FeatureSet<'a> {
         let version = require_attribute(node, "number")?;
         let version = match Version::parse(version) {
             None => {
-                return Err(GenError::InvalidVersion(version.into(), node_pos(node)).err());
+                return Err(Error::InvalidVersion(version.into(), node_pos(node)));
             }
             Some(version) => version,
         };
@@ -127,7 +134,7 @@ impl<'a> FeatureSet<'a> {
                 match child.tag_name().name() {
                     "require" => self.parse_require(child, availability)?,
                     "remove" => self.parse_remove(child)?,
-                    _ => return Err(xmlparse::unexpected_tag(child, node)),
+                    _ => return Err(xmlparse::unexpected_tag(child, node).into()),
                 }
             }
         }
@@ -148,7 +155,7 @@ impl<'a> FeatureSet<'a> {
                         self.enums.insert(name);
                     }
                     "type" => (),
-                    _ => return Err(xmlparse::unexpected_tag(child, node)),
+                    _ => return Err(xmlparse::unexpected_tag(child, node).into()),
                 }
             }
         }
@@ -159,7 +166,7 @@ impl<'a> FeatureSet<'a> {
         assert_eq!(node.tag_name().name(), "remove");
         let profile = require_attribute(node, "profile")?;
         if profile != "core" {
-            return Err(GenError::InvalidRemoveProfile(node_pos(node)).err());
+            return Err(Error::InvalidRemoveProfile(node_pos(node)));
         }
         for child in node.children() {
             if child.is_element() {
@@ -173,7 +180,7 @@ impl<'a> FeatureSet<'a> {
                         self.enums.remove(name);
                     }
                     "type" => (),
-                    _ => return Err(xmlparse::unexpected_tag(child, node)),
+                    _ => return Err(xmlparse::unexpected_tag(child, node).into()),
                 }
             }
         }
@@ -215,14 +222,14 @@ fn emit_enums<'a>(
                         continue;
                     }
                     if emitted.contains_key(name) {
-                        return Err(GenError::DuplicateEnum(name.into()).err());
+                        return Err(Error::DuplicateEnum(name.into()));
                     }
                     let ty = match item.attribute("type") {
                         None => ty,
                         Some(t) => match t {
                             "u" => "unsigned",
                             "ull" => "unsigned long long",
-                            _ => return Err(GenError::UnknownType(t.into(), node_pos(item)).err()),
+                            _ => return Err(Error::UnknownType(t.into(), node_pos(item))),
                         },
                     };
                     let value = require_attribute(item, "value")?;
@@ -233,9 +240,7 @@ fn emit_enums<'a>(
                             None => value,
                             Some(&alias_definition) => {
                                 if definition != alias_definition {
-                                    return Err(
-                                        GenError::AliasConflict(name.into(), alias.into()).err()
-                                    );
+                                    return Err(Error::AliasConflict(name.into(), alias.into()));
                                 }
                                 alias
                             }
@@ -245,7 +250,7 @@ fn emit_enums<'a>(
                     emitted.insert(name, definition);
                 }
                 "unused" => (),
-                _ => return Err(xmlparse::unexpected_tag(item, child)),
+                _ => return Err(xmlparse::unexpected_tag(item, child).into()),
             }
         }
     }
@@ -269,10 +274,10 @@ struct Function {
 fn command_info<'a>(node: Node<'a, 'a>) -> Result<(String, Node<'a, 'a>), Error> {
     assert_eq!(node.tag_name().name(), "command");
     let Some(proto) = element_children_tag(node, "proto").next() else {
-        return Err(GenError::MissingCommandProto(node_pos(node)).err());
+        return Err(Error::MissingCommandProto(node_pos(node)));
     };
     let Some(name) = element_children_tag(proto, "name").next() else {
-        return Err(GenError::MissingCommandName(node_pos(proto)).err());
+        return Err(Error::MissingCommandName(node_pos(proto)));
     };
     Ok((xmlparse::parse_text_contents(name)?, proto))
 }
@@ -287,19 +292,19 @@ fn emit_return_type<'a>(node: Node<'a, 'a>, type_map: &TypeMap) -> Result<String
                 "name" => has_name = true,
                 "ptype" => {
                     if has_name {
-                        return Err(GenError::InvalidPrototype(node_pos(node)).err());
+                        return Err(Error::InvalidPrototype(node_pos(node)));
                     }
                     let ty = xmlparse::parse_text_contents(child)?;
                     out.push_str(type_map.map(&ty));
                 }
-                _ => return Err(xmlparse::unexpected_tag(child, node)),
+                _ => return Err(xmlparse::unexpected_tag(child, node).into()),
             },
             NodeType::Text => {
                 if let Some(text) = child.text() {
                     if !has_name {
                         out.push_str(text);
                     } else if text.chars().any(|c| !c.is_ascii_whitespace()) {
-                        return Err(GenError::InvalidPrototype(node_pos(node)).err());
+                        return Err(Error::InvalidPrototype(node_pos(node)));
                     }
                 }
             }
@@ -308,7 +313,7 @@ fn emit_return_type<'a>(node: Node<'a, 'a>, type_map: &TypeMap) -> Result<String
     }
     let len = out.trim_ascii_end().len();
     if len == 0 {
-        return Err(GenError::InvalidPrototype(node_pos(node)).err());
+        return Err(Error::InvalidPrototype(node_pos(node)));
     }
     out.truncate(len);
     Ok(out)
@@ -336,14 +341,14 @@ fn emit_parameters<'a>(node: Node<'a, 'a>, type_map: &TypeMap) -> Result<(String
                     }
                     "name" => {
                         if has_name {
-                            return Err(GenError::InvalidPrototype(node_pos(item)).err());
+                            return Err(Error::InvalidPrototype(node_pos(item)));
                         }
                         has_name = true;
                         let pos = declarations.len();
                         xmlparse::append_text_contents(&mut declarations, item)?;
                         names.push_str(&declarations[pos..]);
                     }
-                    _ => return Err(xmlparse::unexpected_tag(item, child)),
+                    _ => return Err(xmlparse::unexpected_tag(item, child).into()),
                 },
                 NodeType::Text => {
                     if let Some(text) = item.text() {
@@ -354,7 +359,7 @@ fn emit_parameters<'a>(node: Node<'a, 'a>, type_map: &TypeMap) -> Result<(String
             }
         }
         if !has_name {
-            return Err(GenError::InvalidPrototype(node_pos(child)).err());
+            return Err(Error::InvalidPrototype(node_pos(child)));
         }
     }
     Ok((declarations, names))
@@ -393,7 +398,7 @@ impl Function {
         for child in element_children_tag(node, "commands") {
             for item in element_children(child) {
                 if item.tag_name().name() != "command" {
-                    return Err(xmlparse::unexpected_tag(item, child));
+                    return Err(xmlparse::unexpected_tag(item, child).into());
                 }
                 if let Some(function) = Self::parse(commands, item, type_map)? {
                     result.push(function);
@@ -462,7 +467,7 @@ impl API {
     fn parse(node: Node) -> Result<Self, Error> {
         let type_map = TypeMap::create();
         if node.tag_name().name() != "registry" {
-            return Err(xmlparse::unexpected_root(node));
+            return Err(xmlparse::unexpected_root(node).into());
         }
         let features = FeatureSet::build(node)?;
         let enums = emit_enums(&features.enums, node, &type_map)?;

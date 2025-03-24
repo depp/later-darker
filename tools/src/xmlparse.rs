@@ -29,28 +29,16 @@ impl From<Node<'_, '_>> for TagPos {
 
 /// An error from parsing an XML document.
 #[derive(Debug)]
-pub enum Error<T> {
-    XML(roxmltree::Error),
+pub enum Error {
     UnexpectedRoot(TagPos),
     UnexpectedTag(TagPos, String),
     MissingAttribute(TagPos, String),
     UnexpectedAttribute(TagPos, String),
-    Other(T),
 }
 
-impl<T> From<roxmltree::Error> for Error<T> {
-    fn from(value: roxmltree::Error) -> Self {
-        Self::XML(value)
-    }
-}
-
-impl<T> fmt::Display for Error<T>
-where
-    T: fmt::Display,
-{
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::XML(e) => e.fmt(f),
             Error::UnexpectedRoot(tag) => {
                 write!(f, "unexpected root tag <{}> at {}", tag.tag, tag.pos)
             }
@@ -59,7 +47,6 @@ where
                 "unexpected tag <{}> at {} in <{}>",
                 tag.tag, tag.pos, parent
             ),
-
             Error::MissingAttribute(tag, attribute) => write!(
                 f,
                 "missing required attribute '{}' in <{}> at {}",
@@ -70,25 +57,24 @@ where
                 "unexpected attribute '{}' in <{}> at {}",
                 attribute, tag.tag, tag.pos
             ),
-            Error::Other(e) => e.fmt(f),
         }
     }
 }
 
-impl<T> error::Error for Error<T> where T: error::Error {}
+impl error::Error for Error {}
 
 /// Create an error for an unexpected tag.
-pub fn unexpected_tag<T>(node: Node, parent: Node) -> Error<T> {
+pub fn unexpected_tag(node: Node, parent: Node) -> Error {
     Error::UnexpectedTag(node.into(), parent.tag_name().name().into())
 }
 
 /// Create an error for an unexpected root tag.
-pub fn unexpected_root<T>(node: Node) -> Error<T> {
+pub fn unexpected_root(node: Node) -> Error {
     Error::UnexpectedRoot(node.into())
 }
 
 /// Create an error for an unexpected or unknown attribute.
-pub fn unexpected_attribute<T>(node: Node, attr: Attribute) -> Error<T> {
+pub fn unexpected_attribute(node: Node, attr: Attribute) -> Error {
     Error::UnexpectedAttribute(
         TagPos {
             tag: node.tag_name().name().into(),
@@ -100,7 +86,7 @@ pub fn unexpected_attribute<T>(node: Node, attr: Attribute) -> Error<T> {
 
 /// Get a required attribute from a node, or return an error if the attribute is
 /// not present.
-pub fn require_attribute<'a, T>(node: Node<'a, '_>, name: &str) -> Result<&'a str, Error<T>> {
+pub fn require_attribute<'a>(node: Node<'a, '_>, name: &str) -> Result<&'a str, Error> {
     match node.attribute(name) {
         None => Err(Error::MissingAttribute(node.into(), name.into())),
         Some(value) => Ok(value),
@@ -108,7 +94,7 @@ pub fn require_attribute<'a, T>(node: Node<'a, '_>, name: &str) -> Result<&'a st
 }
 
 /// Append the text contents of a node to the given string. The node must contain only text.
-pub fn append_text_contents<T>(out: &mut String, node: Node) -> Result<(), Error<T>> {
+pub fn append_text_contents(out: &mut String, node: Node) -> Result<(), Error> {
     for child in node.children() {
         match child.node_type() {
             NodeType::Text => {
@@ -126,7 +112,7 @@ pub fn append_text_contents<T>(out: &mut String, node: Node) -> Result<(), Error
 }
 
 /// Parse an element which only contains text. Return the text.
-pub fn parse_text_contents<T>(node: Node) -> Result<String, Error<T>> {
+pub fn parse_text_contents(node: Node) -> Result<String, Error> {
     let mut out = String::new();
     append_text_contents(&mut out, node)?;
     Ok(out)

@@ -77,38 +77,51 @@ impl Source {
 
 /// Error reading a project spec.
 #[derive(Debug)]
-pub enum InnerReadError {
-    IO(io::Error),
+pub enum ReadError {
     BuildTag(condition::ParseError, TextPos),
     BadPath(String, paths::PathError),
     UnknownExtension(String),
+    IO(io::Error),
+    XML(xmlparse::Error),
+    Parse(roxmltree::Error),
 }
 
-impl InnerReadError {
-    fn err(self) -> ReadError {
-        ReadError::Other(self)
+impl From<io::Error> for ReadError {
+    fn from(value: io::Error) -> Self {
+        ReadError::IO(value)
     }
 }
 
-impl fmt::Display for InnerReadError {
+impl From<xmlparse::Error> for ReadError {
+    fn from(value: xmlparse::Error) -> Self {
+        ReadError::XML(value)
+    }
+}
+
+impl From<roxmltree::Error> for ReadError {
+    fn from(value: roxmltree::Error) -> Self {
+        ReadError::Parse(value)
+    }
+}
+
+impl fmt::Display for ReadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            InnerReadError::IO(e) => write!(f, "failed to read: {}", e),
-            InnerReadError::BuildTag(err, pos) => {
+            ReadError::BuildTag(err, pos) => {
                 write!(f, "invalid condition at {}: {}", pos, err)
             }
-            InnerReadError::BadPath(path, err) => write!(f, "invalid path {:?}: {}", path, err),
-            InnerReadError::UnknownExtension(path) => {
+            ReadError::BadPath(path, err) => write!(f, "invalid path {:?}: {}", path, err),
+            ReadError::UnknownExtension(path) => {
                 write!(f, "file {:?} has unknown extension", path)
             }
+            ReadError::IO(e) => write!(f, "failed to read: {}", e),
+            ReadError::XML(err) => err.fmt(f),
+            ReadError::Parse(err) => err.fmt(f),
         }
     }
 }
 
-impl error::Error for InnerReadError {}
-
-/// Error from reading a source list.
-pub type ReadError = xmlparse::Error<InnerReadError>;
+impl error::Error for ReadError {}
 
 // ============================================================================
 // Source List
@@ -134,8 +147,7 @@ impl SourceList {
 
     /// Read a source list from a file.
     pub fn read(path: &Path) -> Result<Self, ReadError> {
-        let text =
-            fs::read_to_string(path).map_err(|err| ReadError::Other(InnerReadError::IO(err)))?;
+        let text = fs::read_to_string(path)?;
         let doc = roxmltree::Document::parse(&text)?;
         let root = doc.root_element();
         if root.tag_name().name() != "sources" {
@@ -192,10 +204,10 @@ impl Group {
                 "condition" => match Condition::parse(attr.value().as_bytes()) {
                     Ok(condition) => result.condition = Some(condition),
                     Err(err) => {
-                        return Err(InnerReadError::BuildTag(err, attr_pos(node, attr)).err());
+                        return Err(ReadError::BuildTag(err, attr_pos(node, attr)));
                     }
                 },
-                _ => return Err(unexpected_attribute(node, attr)),
+                _ => return Err(unexpected_attribute(node, attr).into()),
             }
         }
         // Combine all text and parse it once combined, in case adjacent text
@@ -207,7 +219,7 @@ impl Group {
                     text.push(' ');
                     match child.tag_name().name() {
                         "group" => result.subgroups.push(Group::parse(child)?),
-                        _ => return Err(unexpected_tag(child, node)),
+                        _ => return Err(unexpected_tag(child, node).into()),
                     }
                 }
                 NodeType::Text => {
@@ -221,10 +233,10 @@ impl Group {
         for item in text.split_ascii_whitespace() {
             let path = match ProjectPath::SRC.append(item) {
                 Ok(path) => path,
-                Err(err) => return Err(InnerReadError::BadPath(item.into(), err).err()),
+                Err(err) => return Err(ReadError::BadPath(item.into(), err)),
             };
             let Some(ty) = path.extension().and_then(SourceType::for_extension) else {
-                return Err(InnerReadError::UnknownExtension(item.into()).err());
+                return Err(ReadError::UnknownExtension(item.into()));
             };
             result.sources.push(Arc::new(Source { path, ty }));
         }
