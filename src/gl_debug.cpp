@@ -15,9 +15,9 @@ namespace gl_debug {
 
 namespace {
 
-void GLAPIENTRY DebugCallback(GLenum source, GLenum type, GLenum id,
-                              GLenum severity, GLsizei length,
-                              const GLchar *message, const void *userParam) {
+void GLAPI DebugCallback(GLenum source, GLenum type, GLenum id, GLenum severity,
+                         int length, const char *message,
+                         const void *userParam) {
 	(void)source;
 	(void)type;
 	(void)id;
@@ -52,7 +52,7 @@ void GLAPIENTRY DebugCallback(GLenum source, GLenum type, GLenum id,
 } // namespace
 
 void Init() {
-	if (!GLAD_GL_KHR_debug) {
+	if (!gl_api::KHR_debug.available()) {
 		return;
 	}
 

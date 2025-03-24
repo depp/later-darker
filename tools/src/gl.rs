@@ -583,6 +583,7 @@ impl Function {
 pub struct API {
     enums: String,
     functions: Vec<Function>,
+    extensions: Vec<String>,
 }
 
 impl API {
@@ -595,7 +596,17 @@ impl API {
         let features = FeatureSet::build(node, &spec)?;
         let enums = emit_enums(&features.enums, node, &type_map)?;
         let functions = Function::parse_all(&features.commands, node, &type_map)?;
-        Ok(API { enums, functions })
+        let mut extensions: Vec<String> = spec
+            .extensions
+            .keys()
+            .map(|name| name.to_string())
+            .collect();
+        extensions.sort();
+        Ok(API {
+            enums,
+            functions,
+            extensions,
+        })
     }
 
     /// Create an OpenGL API.
@@ -641,8 +652,8 @@ impl API {
     fn make_bindings_impl(&self, subset: Option<&HashSet<&str>>) -> Bindings {
         let functions = Functions::emit(self, subset);
         Bindings {
-            header: emit_header(&self.enums, &functions),
-            data: emit_data(&functions),
+            header: emit_header(&self.enums, &functions, &self.extensions),
+            data: emit_data(&functions, &self.extensions),
         }
     }
 }
@@ -715,7 +726,7 @@ pub struct Bindings {
     pub data: String,
 }
 
-fn emit_header(enums: &str, functions: &Functions) -> String {
+fn emit_header(enums: &str, functions: &Functions, extensions: &[String]) -> String {
     let mut out = String::new();
     out.push_str(emit::HEADER);
     out.push_str(
@@ -728,10 +739,40 @@ fn emit_header(enums: &str, functions: &Functions) -> String {
         functions.lookups.len()
     )
     .unwrap();
-    out.push_str(
+    write!(
+        out,
         "extern void *FunctionPointers[FunctionPointerCount];\n\
         extern const char FunctionNames[];\n\
-        }\n\
+        constexpr int ExtensionCount = {};\n",
+        extensions.len()
+    )
+    .unwrap();
+    if !extensions.is_empty() {
+        out.push_str(
+            "extern bool ExtensionAvalable[ExtensionCount];\n\
+            extern const char ExtensionNames[];\n\
+            class Extension {\n\
+            public:\n\
+            \texplicit constexpr Extension(int index): mIndex{index} {}\n\
+            \tbool available() const { return ExtensionAvalable[mIndex]; }\n\
+            private:\n\
+            \tint mIndex;\n\
+            };\n",
+        );
+        for (n, name) in extensions.iter().enumerate() {
+            assert!(name.starts_with("GL_"));
+            let short_name = &name[3..];
+            write!(
+                out,
+                "#define {} 1\n\
+                constexpr Extension {}{{{}}};\n",
+                name, short_name, n
+            )
+            .unwrap();
+        }
+    }
+    out.push_str(
+        "}\n\
         }\n\
         \n\
         // Constants \n\
@@ -750,7 +791,7 @@ fn emit_header(enums: &str, functions: &Functions) -> String {
     out
 }
 
-fn emit_data(functions: &Functions) -> String {
+fn emit_data(functions: &Functions, extensions: &[String]) -> String {
     let mut out = String::new();
     out.push_str(emit::HEADER);
 
@@ -764,10 +805,10 @@ fn emit_data(functions: &Functions) -> String {
         .map(|name| name.len())
         .sum::<usize>()
         + functions.lookups.len();
-    writeln!(
+    write!(
         out,
         "void *FunctionPointers[{}];\n\
-        extern const char FunctionNames[{}] =",
+        extern const char FunctionNames[{}] =\n",
         functions.lookups.len(),
         size
     )
@@ -780,7 +821,28 @@ fn emit_data(functions: &Functions) -> String {
         writer.write(name.as_bytes());
     }
     writer.finish();
-    out.push_str(";\n}\n}\n");
+    out.push_str(";\n");
+    if !extensions.is_empty() {
+        let size = extensions.iter().map(|name| name.len()).sum::<usize>() + extensions.len();
+        write!(
+            out,
+            "bool ExtensionAvalable[{}];\n\
+            extern const char ExtensionNames[{}] =\n",
+            extensions.len(),
+            size,
+        )
+        .unwrap();
+        let mut writer: emit::StringWriter<'_> = emit::StringWriter::new(&mut out);
+        for (n, name) in extensions.iter().enumerate() {
+            if n != 0 {
+                writer.write(&[0]);
+            }
+            writer.write(name.as_bytes());
+        }
+        writer.finish();
+        out.push_str(";\n");
+    }
+    out.push_str("}\n}\n");
     out
 }
 
