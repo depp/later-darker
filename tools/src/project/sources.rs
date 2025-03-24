@@ -4,7 +4,7 @@ use super::{config, generator};
 use crate::emit;
 use crate::xmlparse::{
     self, attr_pos, elements_children, missing_attribute, node_pos, unexpected_attribute,
-    unexpected_root, unexpected_tag,
+    unexpected_tag,
 };
 use arcstr::ArcStr;
 use roxmltree::{Node, TextPos};
@@ -301,7 +301,7 @@ impl SourceSpec {
         let doc = roxmltree::Document::parse(&text)?;
         let root = doc.root_element();
         if root.tag_name().name() != "sources" {
-            return Err(unexpected_root(root).into());
+            return Err(unexpected_tag(root).into());
         }
         Ok(SourceSpec {
             group: Group::parse(root)?,
@@ -413,7 +413,7 @@ fn parse_generator(node: Node) -> Result<Arc<Generator>, ReadError> {
         let child = child?;
         match child.tag_name().name() {
             "output" => outputs.push(parse_output(child)?),
-            _ => return Err(unexpected_tag(child, node).into()),
+            _ => return Err(unexpected_tag(child).into()),
         }
     }
     let implementation = match generator::evaluate(rule, &outputs) {
@@ -466,7 +466,7 @@ impl Group {
                     result.sources.extend_from_slice(&generator.outputs);
                     result.generators.push(generator);
                 }
-                _ => return Err(unexpected_tag(child, node).into()),
+                _ => return Err(unexpected_tag(child).into()),
             }
         }
         Ok(result)

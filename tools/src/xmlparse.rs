@@ -87,19 +87,20 @@ impl fmt::Display for Error {
 impl error::Error for Error {}
 
 /// Create an error for an unexpected tag.
-pub fn unexpected_tag(node: Node, parent: Node) -> Error {
-    Error::UnexpectedTag {
-        tag: node.tag_name().name().into(),
-        parent: parent.tag_name().name().into(),
-        pos: node.document().text_pos_at(node.range().start),
+pub fn unexpected_tag(node: Node) -> Error {
+    if let Some(parent) = node.parent() {
+        let parent = parent.tag_name().name();
+        if !parent.is_empty() {
+            return Error::UnexpectedTag {
+                tag: node.tag_name().name().into(),
+                parent: parent.into(),
+                pos: node_pos(node),
+            };
+        }
     }
-}
-
-/// Create an error for an unexpected root tag.
-pub fn unexpected_root(node: Node) -> Error {
     Error::UnexpectedRoot {
         tag: node.tag_name().name().into(),
-        pos: node.document().text_pos_at(node.range().start),
+        pos: node_pos(node),
     }
 }
 
@@ -140,7 +141,7 @@ pub fn append_text_contents(out: &mut String, node: Node) -> Result<(), Error> {
                 }
             }
             NodeType::Element => {
-                return Err(unexpected_tag(child, node));
+                return Err(unexpected_tag(child));
             }
             _ => (),
         }

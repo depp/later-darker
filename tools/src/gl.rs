@@ -136,7 +136,7 @@ impl<'a> FeatureSet<'a> {
                 match child.tag_name().name() {
                     "require" => self.parse_require(child, availability)?,
                     "remove" => self.parse_remove(child)?,
-                    _ => return Err(xmlparse::unexpected_tag(child, node).into()),
+                    _ => return Err(xmlparse::unexpected_tag(child).into()),
                 }
             }
         }
@@ -157,7 +157,7 @@ impl<'a> FeatureSet<'a> {
                         self.enums.insert(name);
                     }
                     "type" => (),
-                    _ => return Err(xmlparse::unexpected_tag(child, node).into()),
+                    _ => return Err(xmlparse::unexpected_tag(child).into()),
                 }
             }
         }
@@ -182,7 +182,7 @@ impl<'a> FeatureSet<'a> {
                         self.enums.remove(name);
                     }
                     "type" => (),
-                    _ => return Err(xmlparse::unexpected_tag(child, node).into()),
+                    _ => return Err(xmlparse::unexpected_tag(child).into()),
                 }
             }
         }
@@ -252,7 +252,7 @@ fn emit_enums<'a>(
                     emitted.insert(name, definition);
                 }
                 "unused" => (),
-                _ => return Err(xmlparse::unexpected_tag(item, child).into()),
+                _ => return Err(xmlparse::unexpected_tag(item).into()),
             }
         }
     }
@@ -299,7 +299,7 @@ fn emit_return_type<'a>(node: Node<'a, 'a>, type_map: &TypeMap) -> Result<String
                     let ty = xmlparse::parse_text_contents(child)?;
                     out.push_str(type_map.map(&ty));
                 }
-                _ => return Err(xmlparse::unexpected_tag(child, node).into()),
+                _ => return Err(xmlparse::unexpected_tag(child).into()),
             },
             NodeType::Text => {
                 if let Some(text) = child.text() {
@@ -350,7 +350,7 @@ fn emit_parameters<'a>(node: Node<'a, 'a>, type_map: &TypeMap) -> Result<(String
                         xmlparse::append_text_contents(&mut declarations, item)?;
                         names.push_str(&declarations[pos..]);
                     }
-                    _ => return Err(xmlparse::unexpected_tag(item, child).into()),
+                    _ => return Err(xmlparse::unexpected_tag(item).into()),
                 },
                 NodeType::Text => {
                     if let Some(text) = item.text() {
@@ -400,7 +400,7 @@ impl Function {
         for child in element_children_tag(node, "commands") {
             for item in element_children_unchecked(child) {
                 if item.tag_name().name() != "command" {
-                    return Err(xmlparse::unexpected_tag(item, child).into());
+                    return Err(xmlparse::unexpected_tag(item).into());
                 }
                 if let Some(function) = Self::parse(commands, item, type_map)? {
                     result.push(function);
@@ -469,7 +469,7 @@ impl API {
     fn parse(node: Node) -> Result<Self, Error> {
         let type_map = TypeMap::create();
         if node.tag_name().name() != "registry" {
-            return Err(xmlparse::unexpected_root(node).into());
+            return Err(xmlparse::unexpected_tag(node).into());
         }
         let features = FeatureSet::build(node)?;
         let enums = emit_enums(&features.enums, node, &type_map)?;
