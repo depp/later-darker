@@ -1,7 +1,7 @@
 use crate::emit;
 use crate::project::config::{Config, Platform, Variant};
 use crate::project::paths::{ProjectPath, ProjectRoot};
-use crate::project::sources::SourceSpec;
+use crate::project::sources::{GeneratorSet, SourceSpec};
 use crate::project::visualstudio;
 use clap::Parser;
 use std::error::Error;
@@ -26,12 +26,10 @@ impl Args {
         })?;
         let mut outputs = emit::Outputs::new();
         visualstudio::generate(Variant::Full, &mut outputs, &sources, &root)?;
+        let mut generators = GeneratorSet::new();
+        generators.add(&sources);
         outputs.add_directory(root.resolve(&ProjectPath::GENERATED));
-        for generator in sources.generators() {
-            for output in generator.implementation().run(&root)? {
-                outputs.add_file(root.resolve(&output.path), output.data);
-            }
-        }
+        generators.run(&root, &mut outputs)?;
         outputs.write()?;
         Ok(())
     }

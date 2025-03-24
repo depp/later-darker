@@ -1,12 +1,14 @@
 use super::condition::{self, Condition, EvalError};
 use super::paths::{self, ProjectPath, ProjectRoot};
 use super::{config, generator};
+use crate::emit;
 use crate::xmlparse::{
     self, attr_pos, elements_children, missing_attribute, node_pos, unexpected_attribute,
     unexpected_root, unexpected_tag,
 };
 use arcstr::ArcStr;
 use roxmltree::{Node, TextPos};
+use std::collections::HashSet;
 use std::error;
 use std::fmt;
 use std::fs;
@@ -131,6 +133,78 @@ impl SourceList {
     /// Get all source generators in the build.
     pub fn generators(&self) -> &[Arc<Generator>] {
         &self.generators
+    }
+}
+
+/// An error running a generator.
+#[derive(Debug)]
+struct GeneratorRunError {
+    rule: ArcStr,
+    name: ArcStr,
+    err: Box<dyn error::Error>,
+}
+
+impl fmt::Display for GeneratorRunError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "generator rule={:?} name={:?} failed: {}",
+            self.rule, self.name, self.err
+        )
+    }
+}
+
+impl error::Error for GeneratorRunError {}
+
+/// A set of source code generators.
+pub struct GeneratorSet {
+    names: HashSet<(ArcStr, ArcStr)>,
+    generators: Vec<Arc<Generator>>,
+}
+
+impl GeneratorSet {
+    /// Create a new, empty set of generators.
+    pub fn new() -> Self {
+        Self {
+            names: HashSet::new(),
+            generators: Vec::new(),
+        }
+    }
+
+    /// Add generators from the given source list.
+    pub fn add(&mut self, list: &SourceList) {
+        for generator in list.generators.iter() {
+            let key = (generator.rule.clone(), generator.name.clone());
+            if self.names.insert(key) {
+                self.generators.push(generator.clone());
+            }
+        }
+    }
+
+    /// Run all of the code generators.
+    pub fn run(
+        &self,
+        root: &ProjectRoot,
+        outputs: &mut emit::Outputs,
+    ) -> Result<(), Box<dyn error::Error>> {
+        for generator in self.generators.iter() {
+            match generator.implementation.run(&root) {
+                Ok(files) => {
+                    for file in files {
+                        outputs.add_file(root.resolve(&file.path), file.data);
+                    }
+                }
+                Err(err) => {
+                    return Err(GeneratorRunError {
+                        rule: generator.rule.clone(),
+                        name: generator.name.clone(),
+                        err,
+                    }
+                    .into());
+                }
+            }
+        }
+        Ok(())
     }
 }
 
