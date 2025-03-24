@@ -87,14 +87,6 @@ impl Config {
     }
 }
 
-/// Test if the string is a recognized as a build tag.
-pub fn is_tag(tag: &str) -> bool {
-    match tag {
-        "compo" | "full" | "windows" | "unix" | "macos" | "linux" => true,
-        _ => false,
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum ParseConfigError {
     InvalidSyntax,
