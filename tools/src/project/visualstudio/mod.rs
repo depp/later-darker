@@ -26,6 +26,7 @@ const COMPO: Parameters = Parameters {
 
 #[derive(Debug)]
 pub struct ProjectInfo {
+    pub variant: Variant,
     pub project_name: String,
     // pub output_name: String,
 }
@@ -65,6 +66,7 @@ pub fn generate(
 
     let project_name = project.emit(outputs, root.as_path(), parameters.name);
     Ok(ProjectInfo {
+        variant,
         project_name,
         // output_name: parameters.name.to_string(),
     })

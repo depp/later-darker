@@ -12,10 +12,19 @@ impl fmt::Display for UnknownVariant {
 
 impl error::Error for UnknownVariant {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Variant {
     Compo,
     Full,
+}
+
+impl fmt::Display for Variant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Variant::Compo => "compo",
+            Variant::Full => "full",
+        })
+    }
 }
 
 impl FromStr for Variant {

@@ -112,7 +112,7 @@ pub fn find_msbuild() -> Result<String, Error> {
 // wrappers around vcvarsall.bat.
 
 /// An architecture supported by Visual Studio tools.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Arch {
     X86,
     Amd64,
@@ -154,7 +154,7 @@ impl FromStr for Arch {
     type Err = UnknownArchitecture;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
+        Ok(match s.to_ascii_lowercase().as_str() {
             "x86" | "ia32" | "win32" => Arch::X86,
             "x64" | "amd64" | "x86-64" | "x86_64" | "win64" => Arch::Amd64,
             "arm" => Arch::Arm,
