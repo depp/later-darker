@@ -33,6 +33,7 @@
 
   <group condition="!compo">
 
+    <src path="gl_common.cpp"/>
     <src path="gl_debug.cpp"/>
     <src path="gl_debug.hpp"/>
     <src path="gl_shader_full.cpp"/>
