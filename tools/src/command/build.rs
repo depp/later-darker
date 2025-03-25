@@ -16,12 +16,15 @@ use std::str::FromStr;
 /// Build the project.
 #[derive(Parser, Debug)]
 pub struct Args {
+    /// Path to the project root directory.
     #[arg(long)]
     project_directory: Option<PathBuf>,
 
+    /// Comma-separated list of configurations to build.
     #[arg(long, value_delimiter = ',')]
     configurations: Option<Vec<Configuration>>,
 
+    /// Run vcpkg integrate install.
     #[arg(long)]
     run_vcpkg: bool,
 }
