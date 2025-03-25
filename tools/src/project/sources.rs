@@ -49,6 +49,7 @@ impl SourceType {
 pub struct Source {
     ty: SourceType,
     path: ProjectPath,
+    is_generated: bool,
 }
 
 impl Source {
@@ -60,6 +61,11 @@ impl Source {
     /// Get the Unix-style, relative path for this source.
     pub fn path(&self) -> &ProjectPath {
         &self.path
+    }
+
+    /// Return true if this is a generated source file.
+    pub fn is_generated(&self) -> bool {
+        self.is_generated
     }
 }
 
@@ -185,10 +191,11 @@ impl GeneratorSet {
     pub fn run(
         &self,
         root: &ProjectRoot,
+        sources: &SourceSpec,
         outputs: &mut emit::Outputs,
     ) -> Result<(), Box<dyn error::Error>> {
         for generator in self.generators.iter() {
-            match generator.implementation.run(&root) {
+            match generator.implementation.run(&root, sources) {
                 Ok(files) => {
                     for file in files {
                         outputs.add_file(root.resolve(&file.path), file.data);
@@ -380,7 +387,11 @@ fn parse_source(node: Node) -> Result<Arc<Source>, ReadError> {
     let Some((ty, path)) = type_path else {
         return Err(missing_attribute(node, "path").into());
     };
-    Ok(Arc::new(Source { ty, path }))
+    Ok(Arc::new(Source {
+        ty,
+        path,
+        is_generated: false,
+    }))
 }
 
 /// Parse an <output> tag.
@@ -395,7 +406,11 @@ fn parse_output(node: Node) -> Result<Arc<Source>, ReadError> {
     let Some((ty, path)) = type_path else {
         return Err(missing_attribute(node, "path").into());
     };
-    Ok(Arc::new(Source { ty, path }))
+    Ok(Arc::new(Source {
+        ty,
+        path,
+        is_generated: true,
+    }))
 }
 
 /// Parse a <generator> tag.

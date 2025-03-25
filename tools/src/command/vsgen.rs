@@ -32,7 +32,7 @@ impl Args {
         }
 
         outputs.add_directory(root.resolve(&ProjectPath::GENERATED));
-        generators.run(&root, &mut outputs)?;
+        generators.run(&root, &source_spec, &mut outputs)?;
         outputs.write()?;
         Ok(())
     }

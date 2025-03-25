@@ -623,33 +623,14 @@ impl API {
     }
 
     /// Create bindings for a subset of this API.
-    pub fn make_subset_bindings<T>(&self, subset: T) -> Result<Bindings, UnknownFunctions>
-    where
-        T: IntoIterator,
-        <<T as IntoIterator>::IntoIter as Iterator>::Item: AsRef<str>,
-    {
-        let mut all: HashSet<&str> = HashSet::new();
-        for function in self.functions.iter() {
-            all.insert(function.name.as_str());
-        }
-        let mut set: HashSet<&str> = HashSet::new();
-        let mut unknown = Vec::new();
-        for item in subset.into_iter() {
-            let item = item.as_ref();
-            match all.get(item) {
-                None => unknown.push(item.to_string()),
-                Some(&s) => {
-                    set.insert(s);
-                }
-            }
-        }
-        if !unknown.is_empty() {
-            return Err(UnknownFunctions(unknown));
-        }
-        Ok(self.make_bindings_impl(Some(&set)))
+    pub fn make_subset_bindings(
+        &self,
+        subset: &HashSet<String>,
+    ) -> Result<Bindings, UnknownFunctions> {
+        Ok(self.make_bindings_impl(Some(subset)))
     }
 
-    fn make_bindings_impl(&self, subset: Option<&HashSet<&str>>) -> Bindings {
+    fn make_bindings_impl(&self, subset: Option<&HashSet<String>>) -> Bindings {
         let functions = Functions::emit(self, subset);
         Bindings {
             header: emit_header(&self.enums, &functions, &self.extensions),
@@ -695,7 +676,7 @@ struct Functions {
 }
 
 impl Functions {
-    fn emit(api: &API, subset: Option<&HashSet<&str>>) -> Self {
+    fn emit(api: &API, subset: Option<&HashSet<String>>) -> Self {
         let mut functions = String::new();
         let mut lookups: Vec<ArcStr> = Vec::new();
         for function in api.functions.iter() {

@@ -1,6 +1,7 @@
 use crate::emit;
-use crate::gl;
+use crate::gl::api;
 use clap::Parser;
+use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
@@ -23,20 +24,24 @@ pub struct Args {
 
 impl Args {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
-        let api = gl::APISpec {
-            version: gl::Version(3, 3),
+        let api = api::APISpec {
+            version: api::Version(3, 3),
             extensions: vec![],
         };
-        let link = gl::APISpec {
-            version: gl::Version(1, 1),
+        let link = api::APISpec {
+            version: api::Version(1, 1),
             extensions: vec![],
         };
-        let api = gl::API::create(&api, &link)?;
+        let api = api::API::create(&api, &link)?;
         let bindings = match &self.entry_points {
             None => api.make_bindings(),
             Some(path) => {
                 let text = fs::read_to_string(path)?;
-                api.make_subset_bindings(text.lines())?
+                let mut entry_points = HashSet::new();
+                for line in text.lines() {
+                    entry_points.insert(line.to_string());
+                }
+                api.make_subset_bindings(&entry_points)?
             }
         };
         emit::write_or_stdout(self.output_header.as_deref(), bindings.header.as_bytes())?;

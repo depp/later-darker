@@ -21,6 +21,7 @@
       <properties>
         <api>3.3</api>
         <link>1.1</link>
+        <config>windows:compo</config>
       </properties>
       <output path="gl_api_compo.hpp"/>
       <output path="gl_api_compo.cpp"/>

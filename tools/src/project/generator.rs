@@ -1,7 +1,9 @@
+use super::config::Config;
 use super::paths::{ProjectPath, ProjectRoot};
-use super::sources::Source;
+use super::sources::{Source, SourceSpec};
 use crate::error::FileError;
-use crate::gl;
+use crate::gl::api;
+use crate::gl::scan;
 use crate::project::sources::SourceType;
 use crate::shader;
 use std::error;
@@ -52,7 +54,11 @@ pub struct Output {
 
 pub trait Generator: fmt::Debug {
     /// Run the generator, producing output data.
-    fn run(&self, root: &ProjectRoot) -> Result<Vec<Output>, Box<dyn error::Error>>;
+    fn run(
+        &self,
+        root: &ProjectRoot,
+        sources: &SourceSpec,
+    ) -> Result<Vec<Output>, Box<dyn error::Error>>;
 }
 
 /// Construct a generator implementation from the source specification.
@@ -154,22 +160,25 @@ impl<T> Property<T> {
 /// OpenGL API binding generator.
 #[derive(Debug)]
 struct GLAPI {
-    api: gl::APISpec,
-    link: gl::APISpec,
+    api: api::APISpec,
+    link: api::APISpec,
+    config: Option<Config>,
     source: ProjectPath,
     header: ProjectPath,
 }
 
 impl GLAPI {
     fn evaluate(mut params: Parameters) -> Result<Self, EvaluationError> {
-        let api: gl::APISpec = params.property("api").parse()?.required()?;
-        let link: gl::APISpec = params.property("link").parse()?.required()?;
+        let api: api::APISpec = params.property("api").parse()?.required()?;
+        let link: api::APISpec = params.property("link").parse()?.required()?;
+        let config: Option<Config> = params.property("config").parse()?.value;
         let source = params.output(SourceType::Source)?;
         let header = params.output(SourceType::Header)?;
         params.done()?;
         Ok(Self {
             api,
             link,
+            config,
             source,
             header,
         })
@@ -177,16 +186,34 @@ impl GLAPI {
 }
 
 impl Generator for GLAPI {
-    fn run(&self, _: &ProjectRoot) -> Result<Vec<Output>, Box<dyn error::Error>> {
-        let api = gl::API::create(&self.api, &self.link)?.make_bindings();
+    fn run(
+        &self,
+        root: &ProjectRoot,
+        sources: &SourceSpec,
+    ) -> Result<Vec<Output>, Box<dyn error::Error>> {
+        let api = api::API::create(&self.api, &self.link)?;
+        let bindings = match &self.config {
+            None => api.make_bindings(),
+            Some(config) => {
+                let sources = sources.sources_for_config(config)?;
+                let mut flat_sources = Vec::new();
+                for source in sources.sources().iter() {
+                    if !source.is_generated() {
+                        flat_sources.push(root.resolve(source.path()));
+                    }
+                }
+                let entry_points = scan::read_entrypoints(&flat_sources)?;
+                api.make_subset_bindings(&entry_points)?
+            }
+        };
         Ok(vec![
             Output {
                 path: self.header.clone(),
-                data: api.header.into(),
+                data: bindings.header.into(),
             },
             Output {
                 path: self.source.clone(),
-                data: api.data.into(),
+                data: bindings.data.into(),
             },
         ])
     }
@@ -211,7 +238,11 @@ impl GLShaders {
 }
 
 impl Generator for GLShaders {
-    fn run(&self, root: &ProjectRoot) -> Result<Vec<Output>, Box<dyn error::Error>> {
+    fn run(
+        &self,
+        root: &ProjectRoot,
+        _sources: &SourceSpec,
+    ) -> Result<Vec<Output>, Box<dyn error::Error>> {
         let directory = root.resolve(&ProjectPath::SHADER);
         let spec_path = directory.join("shaders.txt");
         let spec = match shader::Spec::read_file(&spec_path) {
