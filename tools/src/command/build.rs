@@ -2,12 +2,13 @@ use crate::emit;
 use crate::project::config::{Config, Platform, Variant};
 use crate::project::paths::{ProjectPath, ProjectRoot};
 use crate::project::sources::{GeneratorSet, SourceSpec};
-use crate::project::visualstudio;
+use crate::project::{buildinfo, visualstudio};
 use crate::vsenv::{self, Arch};
 use clap::Parser;
 use std::collections::HashSet;
 use std::error::{self, Error};
 use std::fmt;
+use std::fs;
 use std::io;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
@@ -112,6 +113,7 @@ impl Args {
     }
 
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
+        // Get configuration and environment.
         let configurations = match &self.configurations {
             None => DEFAULT_CONFIGS.to_vec(),
             Some(value) => dedup(value),
@@ -122,12 +124,35 @@ impl Args {
         let msbuild = vsenv::find_msbuild()?;
         eprintln!("MSBuild: {}", msbuild);
 
+        // Get information about the build.
+        let info = buildinfo::BuildInfo::query(&root)?;
+
+        // Clean the output directory, recreate it.
+        let outdir = root.resolve_str("bin/artifact");
+        eprintln!("Removing directory: {}", outdir.display());
+        match fs::remove_dir_all(&outdir) {
+            Ok(()) => (),
+            Err(err) => {
+                if err.kind() != io::ErrorKind::NotFound {
+                    return Err(err.into());
+                }
+            }
+        }
+        fs::create_dir_all(&outdir)?;
+        fs::write(
+            outdir.join("buildinfo.json"),
+            serde_json::to_string_pretty(&info)?,
+        )?;
+
+        // Set up the build environment.
         if self.run_vcpkg {
             let status = Command::new("vcpkg.exe")
                 .args(["integrate", "install"])
                 .status();
             ProcessFailure::from_status(status).map_err(|err| BuildFailure::VCPkgFailed(err))?;
         }
+
+        // Build all projects.
         let projects = self.generate_sources(&root, &variants)?;
         for &configuration in configurations.iter() {
             let Configuration(arch, variant) = configuration;
@@ -135,14 +160,17 @@ impl Args {
                 .iter()
                 .find(|p| p.variant == variant)
                 .expect("Created earlier");
-            let status = Command::new(&msbuild)
-                .current_dir(root.as_path())
+            let mut cmd = Command::new(&msbuild);
+            cmd.current_dir(root.as_path())
                 .arg(&project.project_name)
                 .arg("-property:Configuration=Release")
                 .arg(format!("-property:Platform={}", arch_name(arch)))
-                .arg("-maxCpuCount") // Uses all available CPUs.
-                .status();
-            ProcessFailure::from_status(status)
+                .arg(format!(
+                    "-property:OutDir=bin\\artifact\\{}-{}",
+                    arch, variant
+                ))
+                .arg("-maxCpuCount"); // Uses all available CPUs.
+            ProcessFailure::from_status(cmd.status())
                 .map_err(|err| BuildFailure::MSBuildFailed(configuration, err))?;
         }
 
