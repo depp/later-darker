@@ -10,7 +10,7 @@ use std::error::{self, Error};
 use std::fmt;
 use std::io;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, ExitStatus};
 use std::str::FromStr;
 
 /// Build the project.
@@ -21,6 +21,9 @@ pub struct Args {
 
     #[arg(long, value_delimiter = ',')]
     configurations: Option<Vec<Configuration>>,
+
+    #[arg(long)]
+    run_vcpkg: bool,
 }
 
 /// A build configuration.
@@ -116,6 +119,12 @@ impl Args {
         let msbuild = vsenv::find_msbuild()?;
         eprintln!("MSBuild: {}", msbuild);
 
+        if self.run_vcpkg {
+            let status = Command::new("vcpkg.exe")
+                .args(["integrate", "install"])
+                .status();
+            ProcessFailure::from_status(status).map_err(|err| BuildFailure::VCPkgFailed(err))?;
+        }
         let projects = self.generate_sources(&root, &variants)?;
         for &configuration in configurations.iter() {
             let Configuration(arch, variant) = configuration;
@@ -123,21 +132,15 @@ impl Args {
                 .iter()
                 .find(|p| p.variant == variant)
                 .expect("Created earlier");
-            match Command::new(&msbuild)
+            let status = Command::new(&msbuild)
                 .current_dir(root.as_path())
                 .arg(&project.project_name)
                 .arg("-property:Configuration=Release")
                 .arg(format!("-property:Platform={}", arch_name(arch)))
                 .arg("-maxCpuCount") // Uses all available CPUs.
-                .status()
-            {
-                Ok(status) => {
-                    if !status.success() {
-                        return Err(BuildFailed(configuration, FailReason::FailStatus).into());
-                    }
-                }
-                Err(err) => return Err(BuildFailed(configuration, FailReason::IO(err)).into()),
-            }
+                .status();
+            ProcessFailure::from_status(status)
+                .map_err(|err| BuildFailure::MSBuildFailed(configuration, err))?;
         }
 
         Ok(())
@@ -145,30 +148,55 @@ impl Args {
 }
 
 #[derive(Debug)]
-enum FailReason {
+enum ProcessFailure {
     IO(io::Error),
     FailStatus,
 }
 
-impl fmt::Display for FailReason {
+impl ProcessFailure {
+    fn from_status(value: io::Result<ExitStatus>) -> Result<(), Self> {
+        match value {
+            Ok(status) => {
+                if status.success() {
+                    Ok(())
+                } else {
+                    Err(ProcessFailure::FailStatus)
+                }
+            }
+            Err(err) => Err(ProcessFailure::IO(err)),
+        }
+    }
+}
+
+impl fmt::Display for ProcessFailure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            FailReason::IO(err) => write!(f, "could not run build: {}", err),
-            FailReason::FailStatus => f.write_str("build process failed"),
+            ProcessFailure::IO(err) => write!(f, "could not run process: {}", err),
+            ProcessFailure::FailStatus => f.write_str("process returned failure status"),
         }
     }
 }
 
 #[derive(Debug)]
-struct BuildFailed(Configuration, FailReason);
+enum BuildFailure {
+    MSBuildFailed(Configuration, ProcessFailure),
+    VCPkgFailed(ProcessFailure),
+}
 
-impl fmt::Display for BuildFailed {
+impl fmt::Display for BuildFailure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "build failed for configuration {}: {}", self.0, self.1)
+        match self {
+            BuildFailure::MSBuildFailed(configuration, err) => write!(
+                f,
+                "MSBuild failed for configuration {}: {}",
+                configuration, err
+            ),
+            BuildFailure::VCPkgFailed(err) => write!(f, "vcpkg failed: {}", err),
+        }
     }
 }
 
-impl error::Error for BuildFailed {}
+impl error::Error for BuildFailure {}
 
 /// Deduplicate build configurations.
 fn dedup(configurations: &[Configuration]) -> Vec<Configuration> {
