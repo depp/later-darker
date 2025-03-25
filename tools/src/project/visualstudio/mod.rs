@@ -19,6 +19,11 @@ const FULL: Parameters = Parameters {
     guid: uuid!("26443e89-4e15-4714-8cec-8ce4b3902761"),
 };
 
+const COMPO: Parameters = Parameters {
+    name: "LaterDarkerCompo",
+    guid: uuid!("73d3844b-a032-4877-b24d-d38d3201353e"),
+};
+
 pub fn generate(
     variant: Variant,
     outputs: &mut emit::Outputs,
@@ -26,7 +31,7 @@ pub fn generate(
     root: &ProjectRoot,
 ) -> Result<(), Box<dyn error::Error>> {
     let parameters = match variant {
-        Variant::Compo => panic!("not implemented"),
+        Variant::Compo => &COMPO,
         Variant::Full => &FULL,
     };
     let mut project = Project::new(parameters.guid);
@@ -38,6 +43,10 @@ pub fn generate(
         "AdditionalDependencies",
         "opengl32.lib;%(AdditionalDependencies)",
     );
+    match variant {
+        Variant::Compo => project.properties.definitions.set("COMPO", "1"),
+        _ => {}
+    }
     project.enable_vcpkg = true;
     for file in sources.sources().iter() {
         let list = match file.ty() {
