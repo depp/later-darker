@@ -749,12 +749,12 @@ fn emit_header(enums: &str, functions: &Functions, extensions: &[String]) -> Str
     .unwrap();
     if !extensions.is_empty() {
         out.push_str(
-            "extern bool ExtensionAvalable[ExtensionCount];\n\
+            "extern bool ExtensionAvailable[ExtensionCount];\n\
             extern const char ExtensionNames[];\n\
             class Extension {\n\
             public:\n\
             \texplicit constexpr Extension(int index): mIndex{index} {}\n\
-            \tbool available() const { return ExtensionAvalable[mIndex]; }\n\
+            \tbool available() const { return ExtensionAvailable[mIndex]; }\n\
             private:\n\
             \tint mIndex;\n\
             };\n",
@@ -826,7 +826,7 @@ fn emit_data(functions: &Functions, extensions: &[String]) -> String {
         let size = extensions.iter().map(|name| name.len()).sum::<usize>() + extensions.len();
         write!(
             out,
-            "bool ExtensionAvalable[{}];\n\
+            "bool ExtensionAvailable[{}];\n\
             extern const char ExtensionNames[{}] =\n",
             extensions.len(),
             size,

@@ -71,5 +71,8 @@ inline void LoadProcs() {}
 
 #endif
 
+// Check which extensions are loaded.
+void LoadExtensions();
+
 } // namespace gl_api
 } // namespace demo

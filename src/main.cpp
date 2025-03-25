@@ -110,6 +110,7 @@ void Main() {
 
 	glfwMakeContextCurrent(window);
 	gl_api::LoadProcs();
+	gl_api::LoadExtensions();
 #if !COMPO
 	if (var::DebugContext.get()) {
 		gl_debug::Init();
