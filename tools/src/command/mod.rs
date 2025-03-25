@@ -1,3 +1,4 @@
+pub mod build;
 pub mod glemit;
 pub mod glscan;
 pub mod listsources;
@@ -11,6 +12,7 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 pub enum Command {
+    Build(build::Args),
     Shader(shader::Args),
     GLScan(glscan::Args),
     GLEmit(glemit::Args),
@@ -23,6 +25,7 @@ impl Command {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
         use Command::*;
         match self {
+            Build(c) => c.run(),
             Shader(c) => c.run(),
             GLScan(c) => c.run(),
             GLEmit(c) => c.run(),

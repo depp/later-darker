@@ -16,6 +16,7 @@ pub enum Error {
     ProgStatus(&'static str),
     ProgOutput(&'static str),
     NoDirectory,
+    NoProgram(&'static str),
 }
 
 impl fmt::Display for Error {
@@ -30,6 +31,7 @@ impl fmt::Display for Error {
                 write!(f, "could not parse output of program {}", program)
             }
             Error::NoDirectory => f.write_str("Visual Studio directory does not exist"),
+            Error::NoProgram(name) => write!(f, "program {:?} does not exist", name),
         }
     }
 }
@@ -40,17 +42,15 @@ fn get_env(k: &'static str) -> Result<OsString, Error> {
     env::var_os(k).ok_or(Error::MissingEnvVar(k))
 }
 
-/// Find the installation path for Visual Studio.
-pub fn find_vs() -> Result<String, Error> {
+// .\vswhere.exe -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe
+
+fn run_vswhere(args: &[&str]) -> Result<String, Error> {
     // See: https://github.com/microsoft/vswhere
     const PROGRAM: &str = "vswhere.exe";
     const PATH: &str = "Microsoft Visual Studio\\Installer\\vswhere.exe";
     let mut vs_where = PathBuf::from(get_env("ProgramFiles(x86)")?);
     vs_where.push(PATH);
-    let output = match Command::new(vs_where)
-        .args(["-latest", "-property", "installationPath"])
-        .output()
-    {
+    let output = match Command::new(vs_where).args(args).output() {
         Ok(output) => output,
         Err(e) => return Err(Error::ProgRun(PROGRAM, e)),
     };
@@ -67,10 +67,31 @@ pub fn find_vs() -> Result<String, Error> {
     if stdout.is_empty() {
         return Err(Error::ProgOutput(PROGRAM));
     }
-    if !Path::new(&stdout).is_dir() {
+    Ok(stdout)
+}
+
+/// Find the installation path for Visual Studio.
+pub fn find_vs() -> Result<String, Error> {
+    let path = run_vswhere(&["-latest", "-property", "installationPath"])?;
+    if !Path::new(&path).is_dir() {
         return Err(Error::NoDirectory);
     }
-    Ok(stdout)
+    Ok(path)
+}
+
+// Find the location of the MSBuild binary.
+pub fn find_msbuild() -> Result<String, Error> {
+    let path = run_vswhere(&[
+        "-latest",
+        "-requires",
+        "Microsoft.Component.MSBuild",
+        "-find",
+        "MSBuild\\**\\Bin\\MSBuild.exe",
+    ])?;
+    if !Path::new(&path).is_file() {
+        return Err(Error::NoProgram("msbuild.exe"));
+    }
+    Ok(path)
 }
 
 // Calling VsDevCmd.bat:

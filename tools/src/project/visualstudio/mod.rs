@@ -24,12 +24,19 @@ const COMPO: Parameters = Parameters {
     guid: uuid!("73d3844b-a032-4877-b24d-d38d3201353e"),
 };
 
+#[derive(Debug)]
+pub struct ProjectInfo {
+    pub project_name: String,
+    // pub output_name: String,
+}
+
+/// Generate the MSBuild project. Returns the project name.
 pub fn generate(
     variant: Variant,
     outputs: &mut emit::Outputs,
     sources: &SourceList,
     root: &ProjectRoot,
-) -> Result<(), Box<dyn error::Error>> {
+) -> Result<ProjectInfo, Box<dyn error::Error>> {
     let parameters = match variant {
         Variant::Compo => &COMPO,
         Variant::Full => &FULL,
@@ -56,6 +63,9 @@ pub fn generate(
         list.push(file.path().clone());
     }
 
-    project.emit(outputs, root.as_path(), parameters.name);
-    Ok(())
+    let project_name = project.emit(outputs, root.as_path(), parameters.name);
+    Ok(ProjectInfo {
+        project_name,
+        // output_name: parameters.name.to_string(),
+    })
 }

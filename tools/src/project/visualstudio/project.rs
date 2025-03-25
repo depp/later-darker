@@ -481,12 +481,14 @@ impl Project {
         doc.finish()
     }
 
-    /// Emit project files to a directory.
-    pub fn emit(&self, outputs: &mut emit::Outputs, directory: &Path, name: &str) {
+    /// Emit project files to a directory. Returns the project file name.
+    pub fn emit(&self, outputs: &mut emit::Outputs, directory: &Path, name: &str) -> String {
+        let project_name = name.to_string() + ".vcxproj";
         let vcxproj = self.vcxproj();
         let filters = self.filters();
-        outputs.add_file(directory.join(format!("{}.vcxproj", name)), vcxproj);
-        outputs.add_file(directory.join(format!("{}.vcxproj.filters", name)), filters);
+        outputs.add_file(directory.join(&project_name), vcxproj);
+        outputs.add_file(directory.join(format!("{}.filters", project_name)), filters);
+        project_name
     }
 }
 
