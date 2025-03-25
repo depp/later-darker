@@ -1,6 +1,5 @@
-use std::process;
-
 use clap::Parser;
+use std::process;
 
 mod command;
 mod emit;
@@ -10,6 +9,7 @@ mod identifier;
 mod intern;
 mod project;
 mod shader;
+#[cfg(target_os = "windows")]
 mod vsenv;
 mod xmlgen;
 mod xmlparse;

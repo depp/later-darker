@@ -26,7 +26,9 @@ const COMPO: Parameters = Parameters {
 
 #[derive(Debug)]
 pub struct ProjectInfo {
+    #[allow(dead_code)]
     pub variant: Variant,
+    #[allow(dead_code)]
     pub project_name: String,
     // pub output_name: String,
 }
