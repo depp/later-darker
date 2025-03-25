@@ -6,7 +6,6 @@ use std::fmt;
 use std::io;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::time::SystemTime;
 
 fn is_false(value: &bool) -> bool {
     !value
@@ -17,7 +16,7 @@ fn is_false(value: &bool) -> bool {
 #[serde(rename_all = "camelCase")]
 pub struct BuildInfo {
     /// The time the build was initiated.
-    pub build_time: SystemTime,
+    pub build_time: chrono::DateTime<chrono::Utc>,
 
     /// Git commit used for the build.
     pub commit: String,
@@ -29,7 +28,7 @@ pub struct BuildInfo {
 impl BuildInfo {
     /// Get the build info for the project.
     pub fn query(project_root: &ProjectRoot) -> Result<Self, BuildInfoError> {
-        let build_time = SystemTime::now();
+        let build_time = chrono::Utc::now();
         let commit = get_commit(project_root)?;
         let is_dirty = git_is_dirty(project_root.as_path())?;
         Ok(Self {

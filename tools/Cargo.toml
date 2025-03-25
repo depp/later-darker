@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 arcstr = { version = "1.2.0", features = ["std"] }
+chrono = { version = "0.4.40", default-features = false, features = ["alloc", "now", "serde"] }
 clap = { version = "4.5.32", features = ["derive"] }
 khronos_api = "3.1.0"
 roxmltree = "0.20.0"
