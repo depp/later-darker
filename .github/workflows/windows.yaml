@@ -51,9 +51,9 @@ jobs:
         path: artifacts
     - name: Build
       run: >
-        ${{ steps.tools.outputs.download-path }}\tools.exe build --project-directory=.
+        ${{ steps.tools.outputs.download-path }}\tools.exe build --project-directory=. --run-vcpkg
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ runner.os }}-demo
-        path: bin/
+        path: bin/artifact
