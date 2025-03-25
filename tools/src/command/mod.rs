@@ -1,5 +1,6 @@
 #[cfg(target_os = "windows")]
 pub mod build;
+pub mod buildinfo;
 pub mod glemit;
 pub mod glscan;
 pub mod listsources;
@@ -18,6 +19,7 @@ pub enum Command {
     GLEmit(glemit::Args),
     VSGen(vsgen::Args),
     ListSources(listsources::Args),
+    BuildInfo(buildinfo::Args),
 
     #[cfg(target_os = "windows")]
     Build(build::Args),
@@ -34,6 +36,7 @@ impl Command {
             GLEmit(c) => c.run(),
             VSGen(c) => c.run(),
             ListSources(c) => c.run(),
+            BuildInfo(c) => c.run(),
 
             #[cfg(target_os = "windows")]
             Build(c) => c.run(),

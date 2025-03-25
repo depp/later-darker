@@ -1,3 +1,4 @@
+pub mod buildinfo;
 pub mod condition;
 pub mod config;
 pub mod generator;
